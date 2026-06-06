@@ -10,7 +10,7 @@ $ApiJar = Get-ChildItem -Path (Join-Path $Root "skyblock\libraries\io\papermc\pa
   Select-Object -First 1
 
 if (-not $ApiJar) {
-  throw "Could not find a Paper API jar under $Root\skyblock\libraries. Start Skyblock once or run scripts\download-jars.ps1 first."
+  throw "Could not find a Paper API jar under $Root\skyblock\libraries. Start your server once or run scripts\download-jars.ps1 first."
 }
 
 $LibraryJars = Get-ChildItem -Path (Join-Path $Root "skyblock\libraries") -Recurse -Filter "*.jar" |

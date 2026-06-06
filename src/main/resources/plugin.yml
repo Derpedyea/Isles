@@ -3,15 +3,18 @@ main: net.mineperial.skyblockcore.MineperialSkyblockCorePlugin
 version: 1.0.0
 api-version: '26.1'
 description: >
-  Isles provides custom Skyblock islands and teams with protected void worlds,
+  Isles provides custom islands and teams with protected void worlds,
   island upgrades, and managed travel. It adds shared center, Nether, and End
   progression zones with regenerating resources, timed events, PvP hotspots,
   and custom world generation.
 author: Mineperial
 load: STARTUP
 commands:
-  msb:
+  isles:
     description: Isles commands.
+    usage: /isles
+  msb:
+    description: Legacy alias for Isles commands.
     usage: /msb
   setspawn:
     description: Set your Isles island spawnpoint.
@@ -20,6 +23,9 @@ commands:
     description: Manage Isles teams.
     usage: /team
 permissions:
-  mineperial.skyblock.admin:
+  isles.admin:
     description: Allows Isles admin commands.
+    default: op
+  mineperial.skyblock.admin:
+    description: Legacy permission for Isles admin commands.
     default: op

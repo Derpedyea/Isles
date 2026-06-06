@@ -2,9 +2,9 @@
 import { guidePages } from "../data/wiki";
 
 const {
-	title = "Mineperial Skyblock Wiki",
-	description = "Mineperial Skyblock wiki for islands, teams, generator upgrades, center resources, Nether, End, PvP, commands, and staff tools.",
-	eyebrow = "Mineperial Skyblock Wiki",
+	title = "Isles Wiki",
+	description = "Isles wiki for islands, teams, generator upgrades, center resources, Nether, End, PvP, commands, and staff tools.",
+	eyebrow = "Isles Wiki",
 	activeSlug = "",
 } = Astro.props;
 ---
@@ -12,7 +12,7 @@ const {
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/png" href="/favicon.png" />
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
@@ -27,8 +27,8 @@ const {
 		</div>
 
 		<aside class="rail" aria-label="Wiki navigation">
-			<a class="cube-logo" href="/" aria-label="Mineperial Skyblock Wiki home">
-				<img src="/assets/minecraft/grass-block.png" alt="" />
+			<a class="cube-logo" href="/" aria-label="Isles Wiki home">
+				<img src="/assets/isles/skyblock-island-icon.png" alt="" />
 			</a>
 			<nav>
 				<p>Wiki</p>
@@ -49,7 +49,7 @@ const {
 				<a href="/staff-tools/" aria-current={activeSlug === "staff-tools" ? "page" : undefined}>Staff</a>
 			</div>
 			<label class="search">
-				<span>Search Mineperial Wiki</span>
+				<span>Search Isles Wiki</span>
 				<input id="wiki-search" type="search" placeholder="Search wiki" autocomplete="off" />
 			</label>
 		</header>
@@ -58,7 +58,7 @@ const {
 			<section class="hero" aria-labelledby="page-title">
 				<div class="hero-copy">
 					<p class="eyebrow">{eyebrow}</p>
-					<h1 id="page-title">{title.replace(" | Mineperial Skyblock Wiki", "")}</h1>
+					<h1 id="page-title">{title.replace(" | Isles Wiki", "")}</h1>
 					<p class="lede">{description}</p>
 				</div>
 			</section>
@@ -205,7 +205,7 @@ const {
 	.cube-logo img {
 		width: 72px;
 		height: 72px;
-		image-rendering: pixelated;
+		image-rendering: auto;
 		object-fit: contain;
 		filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.26));
 	}

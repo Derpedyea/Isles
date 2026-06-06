@@ -1,12 +1,12 @@
-# Mineperial Skyblock Core
+# Isles Core
 
-Mineperial Skyblock Core is the Paper plugin behind the `isles` Skyblock experience. It creates protected void islands, shared team islands, custom center and dimension progression zones, generator upgrades, timed center events, and managed world reset tooling.
+Isles Core is the Paper plugin behind the Isles island survival experience. It creates protected void islands, shared team islands, custom center and dimension progression zones, generator upgrades, timed center events, and managed world reset tooling.
 
 The repository also includes an Astro-based player wiki in `wiki/`.
 
 ## Features
 
-- Automatic player island creation in a void Skyblock overworld.
+- Automatic player island creation in a void island overworld.
 - Team islands with invites, leadership transfer, rename, kick, leave, and disband flows.
 - Protected island cores and custom spawnpoint handling.
 - Center asteroid field with PvP, resource nodes, crates, regenerating content, and timed events.
@@ -52,7 +52,7 @@ The script:
 4. Builds `build\isles-1.0.0.jar`.
 5. Deploys it to `<network-root>\skyblock\plugins\isles-1.0.0.jar`.
 
-If the Paper libraries are missing, start the Skyblock server once or run the parent repo jar download script before building.
+If the Paper libraries are missing, start your server once or run the parent repo jar download script before building.
 
 ## Plugin Configuration
 
@@ -87,12 +87,12 @@ Player commands:
 
 | Command | Description |
 | --- | --- |
-| `/msb` | Show Skyblock help. |
-| `/msb island` | Show island coordinates and team island info. |
-| `/msb upgrades` | Open the generator upgrade menu. |
-| `/msb upgrades buy <name>` | Buy an upgrade by friendly name, such as `iron`, `gold`, or `diamond`. |
+| `/isles` | Show Isles help. |
+| `/isles island` | Show island coordinates and team island info. |
+| `/isles upgrades` | Open the generator upgrade menu. |
+| `/isles upgrades buy <name>` | Buy an upgrade by friendly name, such as `iron`, `gold`, or `diamond`. |
 | `/setspawn` | Set the island spawnpoint while standing on your island. |
-| `/msb setspawn` | Alias for `/setspawn`. |
+| `/isles setspawn` | Alias for `/setspawn`. |
 | `/team` | Show team command help. |
 | `/team create <name>` | Create a team around your island. |
 | `/team invite <player>` | Invite an online player to share your island. |
@@ -107,34 +107,38 @@ Player commands:
 Admin commands require:
 
 ```text
-mineperial.skyblock.admin
+isles.admin
 ```
+
+The legacy `mineperial.skyblock.admin` permission is still accepted for compatibility.
 
 | Command | Description |
 | --- | --- |
-| `/msb island create <player>` | Create an island for a player who has joined before. |
-| `/msb island list` | List island owners, assignment slots, and coordinates. |
-| `/msb island wipe` | Clear all island blocks and reset island assignment. |
-| `/msb event start` | Start a center event with bonus nodes and crates. |
-| `/msb event stop` | Stop the active center event. |
-| `/msb center reset` | Rebuild the center asteroid field. |
-| `/msb center status` | Show center seed, asteroid count, archetypes, event settings, structures, and config warnings. |
-| `/msb nether reset` | Rebuild the managed Nether archipelago. |
-| `/msb biome fix` | Refresh managed world biome data. |
-| `/msb worldreset confirm` | Queue a full Skyblock world and data reset for the next server startup. |
-| `/msb unlock nether` | Unlock Nether portal travel and ensure the managed Nether exists. |
-| `/msb unlock end` | Unlock the End, build the arena, and create the center End portal. |
-| `/msb reload` | Reload config/data, refresh generators and managed worlds, and update player tab names. |
+| `/isles island create <player>` | Create an island for a player who has joined before. |
+| `/isles island list` | List island owners, assignment slots, and coordinates. |
+| `/isles island wipe` | Clear all island blocks and reset island assignment. |
+| `/isles event start` | Start a center event with bonus nodes and crates. |
+| `/isles event stop` | Stop the active center event. |
+| `/isles center reset` | Rebuild the center asteroid field. |
+| `/isles center status` | Show center seed, asteroid count, archetypes, event settings, structures, and config warnings. |
+| `/isles nether reset` | Rebuild the managed Nether archipelago. |
+| `/isles biome fix` | Refresh managed world biome data. |
+| `/isles worldreset confirm` | Queue a full Isles world and data reset for the next server startup. |
+| `/isles unlock nether` | Unlock Nether portal travel and ensure the managed Nether exists. |
+| `/isles unlock end` | Unlock the End, build the arena, and create the center End portal. |
+| `/isles reload` | Reload config/data, refresh generators and managed worlds, and update player tab names. |
+
+Legacy `/msb` command forms still work as compatibility aliases.
 
 ## World Reset Behavior
 
-`/msb worldreset confirm` writes `plugins/isles/full-world-reset.flag`. On the next server startup, the plugin backs up configured Skyblock worlds and `plugins/isles/data.yml` to a sibling `backups` directory, removes the flag, and lets fresh worlds/data generate.
+`/isles worldreset confirm` writes `plugins/isles/full-world-reset.flag`. On the next server startup, the plugin backs up configured Isles worlds and `plugins/isles/data.yml` to a sibling `backups` directory, removes the flag, and lets fresh worlds/data generate.
 
 Use this for intentional season resets. For smaller maintenance, prefer the targeted reset commands:
 
-- `/msb center reset`
-- `/msb nether reset`
-- `/msb island wipe`
+- `/isles center reset`
+- `/isles nether reset`
+- `/isles island wipe`
 
 ## Player Wiki
 

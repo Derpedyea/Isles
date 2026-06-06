@@ -97,11 +97,12 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 public final class MineperialSkyblockCorePlugin extends JavaPlugin
     implements Listener, CommandExecutor, TabCompleter {
-  private static final String ADMIN_PERMISSION = "mineperial.skyblock.admin";
+  private static final String ADMIN_PERMISSION = "isles.admin";
+  private static final String LEGACY_ADMIN_PERMISSION = "mineperial.skyblock.admin";
   private static final String GENERATOR_ID_CENTER = "center";
   private static final String GENERATOR_ID_VOID = "void";
   private static final Material SHARD_MATERIAL = Material.AMETHYST_SHARD;
-  private static final String UI_PREFIX = "\u00a76\u00a7lMineperial \u00a78| \u00a7r";
+  private static final String UI_PREFIX = "\u00a76\u00a7lIsles \u00a78| \u00a7r";
   private static final int UPGRADE_MENU_SIZE = 54;
   private static final int[] UPGRADE_MENU_SLOTS = {19, 21, 23, 25, 29, 31, 33, 35};
   private static final int PACKED_X_SHIFT = 42;
@@ -115,8 +116,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private static final int END_ARENA_CHUNK_RADIUS = 5;
   private static final int END_DRAGON_AGGRO_RANGE = 160;
   private static final Pattern TEAM_NAME_PATTERN = Pattern.compile("[A-Za-z0-9 -]{3,24}");
-  private static final List<String> PUBLIC_MSB_COMMANDS = List.of("island", "upgrades", "setspawn");
-  private static final List<String> ADMIN_MSB_COMMANDS =
+  private static final List<String> PUBLIC_ISLES_COMMANDS = List.of("island", "upgrades", "setspawn");
+  private static final List<String> ADMIN_ISLES_COMMANDS =
       List.of("event", "center", "nether", "biome", "worldreset", "unlock", "reload");
   private static final List<String> TEAM_SUBCOMMANDS =
       List.of("create", "invite", "accept", "decline", "leave", "kick", "rename", "disband", "info");
@@ -211,10 +212,11 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     Bukkit.getScheduler().runTask(this, this::initializeWorlds);
     scheduleRepeatingTasks();
     updateAllPlayerTabNames();
-    getLogger().info("Mineperial Skyblock Core enabled.");
+    getLogger().info("Isles enabled.");
   }
 
   private void registerCommands() {
+    registerCommand("isles");
     registerCommand("msb");
     registerCommand("setspawn");
     registerCommand("team");
@@ -263,7 +265,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     if (island == null) {
       island = getOrCreateEffectiveIsland(player);
       if (team == null) {
-        sendSuccess(player, "Your Skyblock island was created at " + islandCoordinateText(island) + ".");
+        sendSuccess(player, "Your Isles island was created at " + islandCoordinateText(island) + ".");
       }
     }
     updatePlayerTabName(player);
@@ -436,7 +438,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     if (event.getPlayer().getGameMode() == GameMode.CREATIVE
-        && event.getPlayer().hasPermission(ADMIN_PERMISSION)) {
+        && hasAdminPermission(event.getPlayer())) {
       return;
     }
 
@@ -498,7 +500,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     if (event.getPlayer().getGameMode() == GameMode.CREATIVE
-        && event.getPlayer().hasPermission(ADMIN_PERMISSION)) {
+        && hasAdminPermission(event.getPlayer())) {
       netherProtectedBlocks.remove(key);
       return;
     }
@@ -718,7 +720,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
           resetNether();
           sendSuccess(sender, "Nether archipelago reset.");
         } else {
-          sendWarning(sender, "Usage: /msb nether reset");
+          sendWarning(sender, "Usage: /isles nether reset");
         }
         return true;
       case "biome":
@@ -749,7 +751,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         loadData();
         initializeWorlds();
         updateAllPlayerTabNames();
-        sendSuccess(sender, "Mineperial Skyblock reloaded.");
+        sendSuccess(sender, "Isles reloaded.");
         return true;
       default:
         sendHelp(sender);
@@ -768,36 +770,36 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     if (args.length == 1) {
-      List<String> root = new ArrayList<>(PUBLIC_MSB_COMMANDS);
-      if (sender.hasPermission(ADMIN_PERMISSION)) {
-        root.addAll(ADMIN_MSB_COMMANDS);
+      List<String> root = new ArrayList<>(PUBLIC_ISLES_COMMANDS);
+      if (hasAdminPermission(sender)) {
+        root.addAll(ADMIN_ISLES_COMMANDS);
       }
       return filter(root, args[0]);
     }
 
     if (args.length == 2) {
-      if (args[0].equalsIgnoreCase("island") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("island") && hasAdminPermission(sender)) {
         return filter(ISLAND_ADMIN_SUBCOMMANDS, args[1]);
       }
       if (args[0].equalsIgnoreCase("upgrades")) {
         return filter(Collections.singletonList("buy"), args[1]);
       }
-      if (args[0].equalsIgnoreCase("event") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("event") && hasAdminPermission(sender)) {
         return filter(EVENT_ADMIN_SUBCOMMANDS, args[1]);
       }
-      if (args[0].equalsIgnoreCase("center") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("center") && hasAdminPermission(sender)) {
         return filter(CENTER_ADMIN_SUBCOMMANDS, args[1]);
       }
-      if (args[0].equalsIgnoreCase("nether") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("nether") && hasAdminPermission(sender)) {
         return filter(Collections.singletonList("reset"), args[1]);
       }
-      if (args[0].equalsIgnoreCase("biome") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("biome") && hasAdminPermission(sender)) {
         return filter(Collections.singletonList("fix"), args[1]);
       }
-      if (args[0].equalsIgnoreCase("worldreset") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("worldreset") && hasAdminPermission(sender)) {
         return filter(Collections.singletonList("confirm"), args[1]);
       }
-      if (args[0].equalsIgnoreCase("unlock") && sender.hasPermission(ADMIN_PERMISSION)) {
+      if (args[0].equalsIgnoreCase("unlock") && hasAdminPermission(sender)) {
         return filter(UNLOCK_ADMIN_SUBCOMMANDS, args[1]);
       }
     }
@@ -1338,7 +1340,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     try {
       data.save(dataFile);
     } catch (IOException e) {
-      getLogger().warning("Could not save Skyblock data.yml: " + e.getMessage());
+      getLogger().warning("Could not save Isles data.yml: " + e.getMessage());
     }
   }
 
@@ -2939,7 +2941,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       if (!requireAdmin(sender)) {
         return;
       }
-      sender.sendMessage("\u00a78---------- \u00a76\u00a7lSkyblock islands \u00a78----------");
+      sender.sendMessage("\u00a78---------- \u00a76\u00a7lIsles islands \u00a78----------");
       for (Island island : islands.values()) {
         sender.sendMessage(
             "\u00a7e- "
@@ -2984,7 +2986,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     if (!(sender instanceof Player player)) {
-      sendWarning(sender, "Usage: /msb island list");
+      sendWarning(sender, "Usage: /isles island list");
       return;
     }
 
@@ -3009,7 +3011,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
     Location location = player.getLocation();
     if (!isSkyblockOverworld(location)) {
-      sendError(player, "You can only set your island spawnpoint in the Skyblock overworld.");
+      sendError(player, "You can only set your island spawnpoint in the Isles overworld.");
       return;
     }
 
@@ -3036,7 +3038,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void handleTeamCommand(CommandSender sender, String[] args) {
     if (!(sender instanceof Player player)) {
-      sendError(sender, "Only players can manage Skyblock teams.");
+      sendError(sender, "Only players can manage Isles teams.");
       return;
     }
     if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
@@ -3349,7 +3351,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private void sendTeamHelp(CommandSender sender) {
-    sender.sendMessage("\u00a78---------- \u00a76\u00a7lSkyblock Teams \u00a78----------");
+    sender.sendMessage("\u00a78---------- \u00a76\u00a7lIsles Teams \u00a78----------");
     sender.sendMessage("\u00a7e/team create <name> \u00a78- \u00a77Create a team around your island.");
     sender.sendMessage("\u00a7e/team invite <player> \u00a78- \u00a77Invite a player to share your island.");
     sender.sendMessage("\u00a7e/team accept \u00a78- \u00a77Join the team that invited you.");
@@ -3637,8 +3639,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         Material.BOOK,
         Component.text("Quick commands", NamedTextColor.GOLD).decorate(TextDecoration.BOLD),
         List.of(
-            Component.text("/msb island", NamedTextColor.YELLOW).append(Component.text(" - island info", NamedTextColor.GRAY)),
-            Component.text("/msb upgrades", NamedTextColor.YELLOW).append(Component.text(" - generator menu", NamedTextColor.GRAY)),
+            Component.text("/isles island", NamedTextColor.YELLOW).append(Component.text(" - island info", NamedTextColor.GRAY)),
+            Component.text("/isles upgrades", NamedTextColor.YELLOW).append(Component.text(" - generator menu", NamedTextColor.GRAY)),
             Component.text("/setspawn", NamedTextColor.YELLOW).append(Component.text(" - set island spawn", NamedTextColor.GRAY)),
             Component.text("/team", NamedTextColor.YELLOW).append(Component.text(" - team commands", NamedTextColor.GRAY))));
   }
@@ -3849,7 +3851,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void handleEventCommand(CommandSender sender, String[] args) {
     if (args.length < 2) {
-      sendWarning(sender, "Usage: /msb event <start|stop>");
+      sendWarning(sender, "Usage: /isles event <start|stop>");
       return;
     }
     if (args[1].equalsIgnoreCase("start")) {
@@ -3857,13 +3859,13 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     } else if (args[1].equalsIgnoreCase("stop")) {
       stopEvent(sender, true);
     } else {
-      sendWarning(sender, "Usage: /msb event <start|stop>");
+      sendWarning(sender, "Usage: /isles event <start|stop>");
     }
   }
 
   private void handleCenterCommand(CommandSender sender, String[] args) {
     if (args.length < 2) {
-      sendWarning(sender, "Usage: /msb center <reset|status>");
+      sendWarning(sender, "Usage: /isles center <reset|status>");
       return;
     }
 
@@ -3878,7 +3880,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
-    sendWarning(sender, "Usage: /msb center <reset|status>");
+    sendWarning(sender, "Usage: /isles center <reset|status>");
   }
 
   private void sendCenterStatus(CommandSender sender) {
@@ -3915,7 +3917,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void handleBiomeCommand(CommandSender sender, String[] args) {
     if (args.length < 2 || !args[1].equalsIgnoreCase("fix")) {
-      sendWarning(sender, "Usage: /msb biome fix");
+      sendWarning(sender, "Usage: /isles biome fix");
       return;
     }
 
@@ -3925,8 +3927,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void handleWorldResetCommand(CommandSender sender, String[] args) {
     if (args.length < 2 || !args[1].equalsIgnoreCase("confirm")) {
-      sendWarning(sender, "Usage: /msb worldreset confirm");
-      sendInfo(sender, "This queues a full Skyblock reset for the next server startup.");
+      sendWarning(sender, "Usage: /isles worldreset confirm");
+      sendInfo(sender, "This queues a full Isles reset for the next server startup.");
       return;
     }
 
@@ -3937,8 +3939,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
           flag,
           "requested-by: " + sender.getName() + System.lineSeparator()
               + "requested-at: " + System.currentTimeMillis() + System.lineSeparator());
-      sendSuccess(sender, "Full Skyblock world reset queued.");
-      sendInfo(sender, "Stop and start the Skyblock server; the plugin will back up world data before Paper loads it.");
+      sendSuccess(sender, "Full Isles world reset queued.");
+      sendInfo(sender, "Stop and start your server; the plugin will back up world data before Paper loads it.");
     } catch (IOException e) {
       sendError(sender, "Could not queue reset: " + e.getMessage());
     }
@@ -3946,7 +3948,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void handleUnlockCommand(CommandSender sender, String[] args) {
     if (args.length < 2) {
-      sendWarning(sender, "Usage: /msb unlock <nether|end>");
+      sendWarning(sender, "Usage: /isles unlock <nether|end>");
       return;
     }
     if (args[1].equalsIgnoreCase("nether")) {
@@ -3962,33 +3964,37 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       saveData();
       broadcast(uiLine("\u00a75", "The End has been unlocked. A shared End portal opened at the center."));
     } else {
-      sendWarning(sender, "Usage: /msb unlock <nether|end>");
+      sendWarning(sender, "Usage: /isles unlock <nether|end>");
     }
   }
 
   private void sendHelp(CommandSender sender) {
-    sender.sendMessage("\u00a78---------- \u00a76\u00a7lMineperial Skyblock \u00a78----------");
-    sender.sendMessage("\u00a7e/msb island \u00a78- \u00a77Show your island coordinates.");
-    sender.sendMessage("\u00a7e/msb upgrades \u00a78- \u00a77Open the generator upgrade menu.");
+    sender.sendMessage("\u00a78---------- \u00a76\u00a7lIsles \u00a78----------");
+    sender.sendMessage("\u00a7e/isles island \u00a78- \u00a77Show your island coordinates.");
+    sender.sendMessage("\u00a7e/isles upgrades \u00a78- \u00a77Open the generator upgrade menu.");
     sender.sendMessage("\u00a7e/setspawn \u00a78- \u00a77Set your island spawnpoint.");
     sender.sendMessage("\u00a7e/team \u00a78- \u00a77Create or manage a shared island team.");
-    if (sender.hasPermission(ADMIN_PERMISSION)) {
+    if (hasAdminPermission(sender)) {
       sender.sendMessage("\u00a78Admin");
-      sender.sendMessage("\u00a7e/msb island create <player> \u00a78- \u00a77Create a player's island.");
-      sender.sendMessage("\u00a7e/msb island list \u00a78- \u00a77List islands.");
-      sender.sendMessage("\u00a7e/msb island wipe \u00a78- \u00a77Remove island blocks and reset assignments.");
-      sender.sendMessage("\u00a7e/msb event <start|stop> \u00a78- \u00a77Control center events.");
-      sender.sendMessage("\u00a7e/msb center <reset|status> \u00a78- \u00a77Manage center asteroids.");
-      sender.sendMessage("\u00a7e/msb nether reset \u00a78- \u00a77Rebuild the Nether archipelago.");
-      sender.sendMessage("\u00a7e/msb biome fix \u00a78- \u00a77Refresh managed world biomes.");
-      sender.sendMessage("\u00a7e/msb worldreset confirm \u00a78- \u00a77Queue a full world/data reset.");
-      sender.sendMessage("\u00a7e/msb unlock <nether|end> \u00a78- \u00a77Unlock dimensions.");
-      sender.sendMessage("\u00a7e/msb reload \u00a78- \u00a77Reload config/data.");
+      sender.sendMessage("\u00a7e/isles island create <player> \u00a78- \u00a77Create a player's island.");
+      sender.sendMessage("\u00a7e/isles island list \u00a78- \u00a77List islands.");
+      sender.sendMessage("\u00a7e/isles island wipe \u00a78- \u00a77Remove island blocks and reset assignments.");
+      sender.sendMessage("\u00a7e/isles event <start|stop> \u00a78- \u00a77Control center events.");
+      sender.sendMessage("\u00a7e/isles center <reset|status> \u00a78- \u00a77Manage center asteroids.");
+      sender.sendMessage("\u00a7e/isles nether reset \u00a78- \u00a77Rebuild the Nether archipelago.");
+      sender.sendMessage("\u00a7e/isles biome fix \u00a78- \u00a77Refresh managed world biomes.");
+      sender.sendMessage("\u00a7e/isles worldreset confirm \u00a78- \u00a77Queue a full world/data reset.");
+      sender.sendMessage("\u00a7e/isles unlock <nether|end> \u00a78- \u00a77Unlock dimensions.");
+      sender.sendMessage("\u00a7e/isles reload \u00a78- \u00a77Reload config/data.");
     }
   }
 
+  private boolean hasAdminPermission(CommandSender sender) {
+    return sender.hasPermission(ADMIN_PERMISSION) || sender.hasPermission(LEGACY_ADMIN_PERMISSION);
+  }
+
   private boolean requireAdmin(CommandSender sender) {
-    if (!sender.hasPermission(ADMIN_PERMISSION)) {
+    if (!hasAdminPermission(sender)) {
       sendError(sender, "You do not have permission to use that command.");
       return false;
     }
@@ -4004,7 +4010,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     boolean saved = saveBukkitWorldGeneratorConfig(generators);
     boolean patched = patchLoadedBukkitWorldGeneratorConfig(generators);
     if (saved || patched) {
-      getLogger().info("Registered Mineperial Skyblock void generators for managed worlds.");
+      getLogger().info("Registered Isles void generators for managed worlds.");
     }
   }
 
@@ -4112,22 +4118,22 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         if (!Files.exists(worldPath)) {
           continue;
         }
-        Path backupPath = backupRoot.resolve("skyblock-" + worldName + "-reset-" + timestamp);
+        Path backupPath = backupRoot.resolve("isles-" + worldName + "-reset-" + timestamp);
         Files.move(worldPath, backupPath);
         getLogger().warning("Backed up " + worldName + " to " + backupPath + ".");
       }
 
       Path dataPath = dataFolderPath.resolve("data.yml");
       if (Files.exists(dataPath)) {
-        Path dataBackup = backupRoot.resolve("skyblock-data-reset-" + timestamp + ".yml");
+        Path dataBackup = backupRoot.resolve("isles-data-reset-" + timestamp + ".yml");
         Files.move(dataPath, dataBackup);
-        getLogger().warning("Backed up skyblock plugin data to " + dataBackup + ".");
+        getLogger().warning("Backed up Isles plugin data to " + dataBackup + ".");
       }
 
       Files.deleteIfExists(flag);
-      getLogger().warning("Full Skyblock reset applied. Fresh world/data will be generated this startup.");
+      getLogger().warning("Full Isles reset applied. Fresh world/data will be generated this startup.");
     } catch (IOException e) {
-      getLogger().warning("Could not apply pending full Skyblock reset: " + e.getMessage());
+      getLogger().warning("Could not apply pending full Isles reset: " + e.getMessage());
     }
   }
 
@@ -4180,7 +4186,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
                 + getName()
                 + ":"
                 + expectedId
-                + ". New installs are auto-configured, but existing terrain requires /msb worldreset confirm "
+                + ". New installs are auto-configured, but existing terrain requires /isles worldreset confirm "
                 + "or a manual world reset to become a true void world.");
   }
 
@@ -5081,9 +5087,9 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     Scoreboard scoreboard = manager.getNewScoreboard();
     Objective objective =
         scoreboard.registerNewObjective(
-            "msb",
+            "isles",
             Criteria.DUMMY,
-            Component.text("Mineperial", NamedTextColor.GOLD).decorate(TextDecoration.BOLD));
+            Component.text("Isles", NamedTextColor.GOLD).decorate(TextDecoration.BOLD));
     objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
     int score = lines.size();

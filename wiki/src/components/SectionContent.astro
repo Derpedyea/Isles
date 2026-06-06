@@ -29,12 +29,12 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				<div class="section-copy">
 					<h3>Your First Island</h3>
 					<p>
-						When you join, Mineperial creates your Skyblock island and sends you there. The
+						When you join, Isles creates your island and sends you there. The
 						island starts with grass, dirt, a tree, a protected lodestone core, and a starter chest.
 					</p>
 					<ul>
 						<li>Starter chest: lava bucket, ice, oak saplings, bone meal, bread, dirt, cobblestone, and string.</li>
-						<li>Use <code>/msb island</code> to check your island coordinates.</li>
+						<li>Use <code>/isles island</code> to check your island coordinates.</li>
 						<li>Use <code>/setspawn</code> while standing on your island to set your return point.</li>
 						<li>Your island core uses lodestone and bedrock protection, so do not plan builds that require removing it.</li>
 						<li>The sidebar tracks your PvP zone, island coordinates, Center Shards, generator progress, Center distance, and active events.</li>
@@ -58,7 +58,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 					<h2>Commands</h2>
 				</header>
 				<p class="section-copy">
-					These are the Skyblock commands exposed to regular members. Staff-only maintenance commands are intentionally left out.
+					These are the Isles commands exposed to regular members. Staff-only maintenance commands are intentionally left out.
 				</p>
 				<div class="table-wrap">
 					<table>
@@ -98,7 +98,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				</header>
 				<div class="section-copy">
 					<p>
-						These commands require <code>mineperial.skyblock.admin</code>, which defaults to operators.
+						These commands require <code>isles.admin</code>, which defaults to operators.
 						They control world setup, Center events, dimension unlocks, and reset workflows.
 					</p>
 				</div>
@@ -124,7 +124,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				</div>
 				<div class="note-row">
 					<p>New installs auto-register the Center generator for the overworld and void generators for the Nether and End.</p>
-					<p>Existing terrain may still need <code>/msb worldreset confirm</code> or a manual world reset to become true void terrain.</p>
+					<p>Existing terrain may still need <code>/isles worldreset confirm</code> or a manual world reset to become true void terrain.</p>
 					<p>World reset requests are queued with a flag file and are processed on the next server startup before Paper loads the worlds.</p>
 				</div>
 			</article>
@@ -186,7 +186,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 					<h2>Generator Menu</h2>
 				</header>
 				<p class="section-copy">
-					Open <code>/msb upgrades</code> to spend Center Shards and materials. Generator upgrades affect
+					Open <code>/isles upgrades</code> to spend Center Shards and materials. Generator upgrades affect
 					cobblestone or stone that forms from your generator.
 				</p>
 				<div class="upgrade-grid">
@@ -195,7 +195,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 							<section>
 								<div>
 									<h3>{upgrade.name}</h3>
-									<code>/msb upgrades buy {upgrade.buy}</code>
+									<code>/isles upgrades buy {upgrade.buy}</code>
 								</div>
 								<p>{upgrade.effect}</p>
 								<dl>

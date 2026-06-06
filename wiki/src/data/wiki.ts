@@ -7,7 +7,7 @@ export const guidePages = [
 		icon: "/assets/minecraft/grass-block.png",
 		text: "Your first island, starter chest, spawnpoint, and early goals.",
 		description:
-			"Learn how Mineperial Skyblock starts, what is in your starter chest, and how travel works.",
+			"Learn how Isles starts, what is in your starter chest, and how travel works.",
 		search: "getting started starter island chest spawn travel core lodestone physical",
 	},
 	{
@@ -18,7 +18,7 @@ export const guidePages = [
 		icon: "/assets/minecraft/book.png",
 		text: "The member commands you will use most often.",
 		description: "A member-friendly command reference for islands, generator upgrades, spawns, and teams.",
-		search: "commands msb island generator upgrades setspawn team invite accept decline leave kick rename help",
+		search: "commands isles island generator upgrades setspawn team invite accept decline leave kick rename help",
 	},
 	{
 		slug: "staff-tools",
@@ -28,7 +28,7 @@ export const guidePages = [
 		icon: "/assets/minecraft/diamond-chestplate.png",
 		text: "Admin-only maintenance, unlock, reset, and diagnostics commands.",
 		description: "Staff command reference for resets, unlocks, world generation, center events, and config reloads.",
-		search: "staff admin op permission mineperial.skyblock.admin event center nether biome worldreset unlock reload",
+		search: "staff admin op permission isles.admin event center nether biome worldreset unlock reload",
 	},
 	{
 		slug: "teams",
@@ -37,7 +37,7 @@ export const guidePages = [
 		category: "Article",
 		icon: "/assets/minecraft/name-tag.png",
 		text: "Share one island with friends, invites, leadership, and leaving.",
-		description: "Create, join, manage, and leave shared Skyblock teams safely.",
+		description: "Create, join, manage, and leave shared Isles teams safely.",
 		search: "team teams invite accept leader rename disband kick leave shared island",
 	},
 	{
@@ -47,7 +47,7 @@ export const guidePages = [
 		category: "Reference",
 		icon: "/assets/minecraft/diamond-ore.png",
 		text: "Spend Center Shards to improve your cobblestone generator.",
-		description: "Costs and effects for Mineperial Skyblock generator upgrades.",
+		description: "Costs and effects for Isles generator upgrades.",
 		search: "upgrades center shards generator iron gold diamond ore costs",
 	},
 	{
@@ -67,7 +67,7 @@ export const guidePages = [
 		category: "Article",
 		icon: "/assets/minecraft/netherrack.png",
 		text: "Unlocked archipelago islands, protected terrain, and rare nodes.",
-		description: "A guide to the custom Mineperial Nether, its islands, resources, mobs, and PvP hotspots.",
+		description: "A guide to the custom Isles Nether, its islands, resources, mobs, and PvP hotspots.",
 		search: "nether archipelago quartz crimson blaze bastion debris pvp hotspot ancient debris nodes",
 	},
 	{
@@ -93,13 +93,13 @@ export const guidePages = [
 ];
 
 export const commands = [
-	["/msb", "Open the Mineperial Skyblock command help."],
-	["/msb island", "Show your island coordinates and current team island info."],
-	["/msb upgrades", "Open the generator upgrades menu."],
-	["/msb upgrades buy <name>", "Buy a generator upgrade by friendly name, like iron or diamond."],
+	["/isles", "Open the Isles command help."],
+	["/isles island", "Show your island coordinates and current team island info."],
+	["/isles upgrades", "Open the generator upgrades menu."],
+	["/isles upgrades buy <name>", "Buy a generator upgrade by friendly name, like iron or diamond."],
 	["/setspawn", "Set your island spawnpoint while standing on your island."],
-	["/msb setspawn", "Alias for /setspawn through the /msb command root."],
-	["/team", "Show Skyblock team commands."],
+	["/isles setspawn", "Alias for /setspawn through the /isles command root."],
+	["/team", "Show Isles team commands."],
 	["/team help", "Show the team command help."],
 	["/team create <name>", "Create a team around your current island."],
 	["/team invite <player>", "Invite an online player to share your island."],
@@ -113,19 +113,19 @@ export const commands = [
 ];
 
 export const adminCommands = [
-	["/msb island create <player>", "Create an island for a player who has joined before. Online targets are teleported to it."],
-	["/msb island list", "List island owners, assignment slots, and coordinates."],
-	["/msb island wipe", "Clear all island blocks and reset island assignment."],
-	["/msb event start", "Start a Center event with bonus nodes and event crates."],
-	["/msb event stop", "Stop the active Center event and clear event-only content."],
-	["/msb center reset", "Rebuild the Center asteroid field, structures, crates, and resource nodes."],
-	["/msb center status", "Show Center seed, asteroid count, archetypes, event settings, structures, and config warnings."],
-	["/msb nether reset", "Rebuild the managed Nether archipelago, protected terrain, resource nodes, and mobs."],
-	["/msb biome fix", "Refresh managed world biome data: Plains for islands and Center, The Void for Nether and End areas."],
-	["/msb worldreset confirm", "Queue a full Skyblock world and data reset for the next server startup."],
-	["/msb unlock nether", "Unlock Nether portal travel and ensure the managed Nether archipelago exists."],
-	["/msb unlock end", "Unlock the End, build the shared arena, and create the Center End portal."],
-	["/msb reload", "Reload config and data, refresh generators and managed worlds, and update player tab names."],
+	["/isles island create <player>", "Create an island for a player who has joined before. Online targets are teleported to it."],
+	["/isles island list", "List island owners, assignment slots, and coordinates."],
+	["/isles island wipe", "Clear all island blocks and reset island assignment."],
+	["/isles event start", "Start a Center event with bonus nodes and event crates."],
+	["/isles event stop", "Stop the active Center event and clear event-only content."],
+	["/isles center reset", "Rebuild the Center asteroid field, structures, crates, and resource nodes."],
+	["/isles center status", "Show Center seed, asteroid count, archetypes, event settings, structures, and config warnings."],
+	["/isles nether reset", "Rebuild the managed Nether archipelago, protected terrain, resource nodes, and mobs."],
+	["/isles biome fix", "Refresh managed world biome data: Plains for islands and Center, The Void for Nether and End areas."],
+	["/isles worldreset confirm", "Queue a full Isles world and data reset for the next server startup."],
+	["/isles unlock nether", "Unlock Nether portal travel and ensure the managed Nether archipelago exists."],
+	["/isles unlock end", "Unlock the End, build the shared arena, and create the Center End portal."],
+	["/isles reload", "Reload config and data, refresh generators and managed worlds, and update player tab names."],
 ];
 
 export const upgrades = [
