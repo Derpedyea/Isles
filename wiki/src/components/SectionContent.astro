@@ -1,0 +1,314 @@
+---
+import { centerDrops, commands, guidePages, netherIslands, safetyRules, upgrades } from "../data/wiki";
+
+const { page } = Astro.props;
+const slug = page.slug;
+const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
+---
+
+{
+	slug === "getting-started" && (
+		<>
+			<section class="band">
+				<h2>First Steps</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Getting Started</h2>
+				</header>
+				<div class="section-copy">
+					<h3>Your First Island</h3>
+					<p>
+						When you join, Mineperial creates your Skyblock island and sends you there. The
+						island starts with grass, dirt, a tree, a protected lodestone core, and a starter chest.
+					</p>
+					<ul>
+						<li>Starter chest: lava bucket, ice, oak saplings, bone meal, bread, dirt, cobblestone, and string.</li>
+						<li>Use <code>/msb island</code> to check your island coordinates.</li>
+						<li>Use <code>/setspawn</code> while standing on your island to set your return point.</li>
+						<li>Your island core uses lodestone and bedrock protection, so do not plan builds that require removing it.</li>
+					</ul>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "commands" && (
+		<>
+			<section class="band">
+				<h2>Member Commands</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Commands</h2>
+				</header>
+				<p class="section-copy">
+					These are the Skyblock commands exposed to regular members. Staff-only maintenance commands are intentionally left out.
+				</p>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th>Command</th>
+								<th>What It Does</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								commands.map(([command, description]) => (
+									<tr>
+										<td><code>{command}</code></td>
+										<td>{description}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "teams" && (
+		<>
+			<section class="band">
+				<h2>Shared Islands</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Teams</h2>
+				</header>
+				<p class="section-copy">
+					Teams let several players share one island. The leader owns the shared island, manages invites,
+					and controls team-only actions such as renaming or kicking.
+				</p>
+				<div class="steps">
+					<div>
+						<span>1</span>
+						<h3>Create</h3>
+						<p>Use <code>/team create &lt;name&gt;</code>. Names can use letters, numbers, spaces, or hyphens, and must be 3-24 characters.</p>
+					</div>
+					<div>
+						<span>2</span>
+						<h3>Invite</h3>
+						<p>Team leaders can use <code>/team invite &lt;player&gt;</code>. The player must be online and not already on a team.</p>
+					</div>
+					<div>
+						<span>3</span>
+						<h3>Accept</h3>
+						<p>Accepting joins the leader's island. The accepting player's old solo island is wiped.</p>
+					</div>
+					<div>
+						<span>4</span>
+						<h3>Leave</h3>
+						<p>Members who leave or get kicked receive a fresh island. If a leader leaves a multi-player team, leadership transfers.</p>
+					</div>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "upgrades" && (
+		<>
+			<section class="band">
+				<h2>Generator Upgrades</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Generator Menu</h2>
+				</header>
+				<p class="section-copy">
+					Open <code>/msb upgrades</code> to spend Center Shards and materials. Generator upgrades affect
+					cobblestone or stone that forms from your generator.
+				</p>
+				<div class="upgrade-grid">
+					{
+						upgrades.map((upgrade) => (
+							<section>
+								<div>
+									<h3>{upgrade.name}</h3>
+									<code>/msb upgrades buy {upgrade.buy}</code>
+								</div>
+								<p>{upgrade.effect}</p>
+								<dl>
+									<div>
+										<dt>Cost</dt>
+										<dd>{upgrade.cost}</dd>
+									</div>
+									<div>
+										<dt>Note</dt>
+										<dd>{upgrade.note}</dd>
+									</div>
+								</dl>
+							</section>
+						))
+					}
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "center" && (
+		<>
+			<section class="band">
+				<h2>The Center</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Asteroid Field</h2>
+				</header>
+				<div class="split">
+					<div>
+						<p>
+							The center is the asteroid field around world spawn. It is the main place to earn
+							Center Shards, mine renewable resource veins, find crates, and fight other players.
+						</p>
+						<ul>
+							<li>Center radius: about 160 blocks from 0,0.</li>
+							<li>PvP is enabled inside the center.</li>
+							<li>Regular resource veins respawn after about 15 minutes.</li>
+							<li>Center events last 20 minutes and add bonus nodes plus event crates.</li>
+						</ul>
+					</div>
+					<div class="stat-card">
+						<h3>Event Loot</h3>
+						<p>
+							Events add 12 bonus nodes and 5 crates. Event crates can include 4-7 Center Shards
+							plus items like diamonds, golden apples, XP bottles, ender pearls, and amethyst shards.
+						</p>
+					</div>
+				</div>
+				<div class="table-wrap compact">
+					<table>
+						<thead>
+							<tr>
+								<th>Vein</th>
+								<th>Drop</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								centerDrops.map(([node, drop]) => (
+									<tr>
+										<td>{node}</td>
+										<td>{drop}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "nether" && (
+		<>
+			<section class="band">
+				<h2>Nether Archipelago</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Custom Nether</h2>
+				</header>
+				<p class="section-copy">
+					The Nether is locked until staff unlocks it for the SMP. Once unlocked, Nether portals
+					send you to a custom void archipelago instead of normal Nether terrain.
+				</p>
+				<div class="list-grid">
+					{
+						netherIslands.map(([name, description]) => (
+							<section>
+								<h3>{name}</h3>
+								<p>{description}</p>
+							</section>
+						))
+					}
+				</div>
+				<div class="note-row">
+					<p>Nether resource nodes respawn after about 20 minutes.</p>
+					<p>Ancient debris nodes respawn after about 2 hours, with only a few active at once.</p>
+					<p>Bastion hotspots are PvP zones and give doubled drops from most Nether nodes.</p>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "end" && (
+		<>
+			<section class="band">
+				<h2>The End</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Shared Dragon Arena</h2>
+				</header>
+				<div class="section-copy">
+					<p>
+						The End is locked until staff unlocks it. When it opens, a shared End portal appears
+						at the center. Everyone uses the same void arena and dragon fight.
+					</p>
+					<ul>
+						<li>The entry platform is obsidian near the arena edge.</li>
+						<li>The arena is a round End Stone island with obsidian pillars and crystals.</li>
+						<li>The dragon stays active and targets nearby survival or adventure players.</li>
+					</ul>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
+	slug === "safety" && (
+		<>
+			<section class="band">
+				<h2>Safety And Rules</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Player Safety</h2>
+				</header>
+				<ul class="rule-list">
+					{safetyRules.map((rule) => <li>{rule}</li>)}
+				</ul>
+			</article>
+		</>
+	)
+}
+
+<section class="band">
+	<h2>Related Pages</h2>
+</section>
+
+<section class="browse-grid" aria-label="Related wiki pages">
+	{
+		related.map((item) => (
+			<a class="browse-card search-card" href={`/${item.slug}/`} data-search={`${item.title} ${item.text} ${item.search}`}>
+				<img class="mc-icon" src={item.icon} alt="" />
+				<strong>{item.title}</strong>
+				<small>{item.text}</small>
+			</a>
+		))
+	}
+</section>

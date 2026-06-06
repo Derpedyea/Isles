@@ -1,0 +1,23 @@
+---
+import SectionContent from "../components/SectionContent.astro";
+import { guidePages } from "../data/wiki";
+import WikiLayout from "../layouts/WikiLayout.astro";
+
+export function getStaticPaths() {
+	return guidePages.map((page) => ({
+		params: { slug: page.slug },
+		props: { page },
+	}));
+}
+
+const { page } = Astro.props;
+---
+
+<WikiLayout
+	title={`${page.title} | Mineperial Skyblock Wiki`}
+	description={page.description}
+	eyebrow={page.category}
+	activeSlug={page.slug}
+>
+	<SectionContent page={page} />
+</WikiLayout>

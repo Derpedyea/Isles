@@ -1,0 +1,22 @@
+# Build artifacts
+/build/
+target/
+out/
+*.class
+*.jar
+
+# Node/Astro
+node_modules/
+dist/
+.astro/
+
+# Tooling and local state
+.gradle/
+.idea/
+.vscode/
+*.iml
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db

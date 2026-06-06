@@ -1,0 +1,183 @@
+world-name: world
+nether-world-name: world_nether
+end-world-name: world_the_end
+auto-register-world-generators: true
+
+grid-spacing: 384
+island-y: 88
+center-y: 92
+center-radius: 160
+center-natural-monster-spawn-chance: 0.65
+event-duration-minutes: 20
+node-respawn-seconds: 900
+pvp-only-in-center: true
+physical-travel-only: true
+
+center-seed: 776431
+void-drop-safe-radius: 2
+
+center-generator:
+  central-archetype: ruined
+  central-tier: 3
+  central-radius-x: 42
+  central-radius-y: 17
+  central-radius-z: 37
+  lobe-count: 5
+  satellite-min: 10
+  satellite-max: 18
+  max-decorations-per-asteroid: 18
+  max-hazards-per-asteroid: 7
+  structures:
+    enabled: true
+    central: true
+    count: 7
+    min-tier: 2
+  event:
+    nodes: 12
+    crates: 5
+    crate-shards-min: 4
+    crate-shards-max: 7
+    bonus-nodes:
+      DIAMOND_ORE: 26
+      EMERALD_ORE: 8
+      GOLD_ORE: 22
+      REDSTONE_ORE: 20
+      LAPIS_ORE: 20
+      IRON_ORE: 18
+    crate-loot:
+      DIAMOND: 2
+      GOLDEN_APPLE: 1
+      EXPERIENCE_BOTTLE: 10
+      ENDER_PEARL: 4
+      AMETHYST_SHARD: 5
+  crates:
+    shards-min: 1
+    shards-max: 4
+    loot:
+      IRON_INGOT: 8
+      GOLD_INGOT: 4
+      EXPERIENCE_BOTTLE: 6
+      AMETHYST_SHARD: 3
+      COAL: 12
+  archetypes:
+    rocky:
+      weight: 26
+      min-tier: 1
+      max-tier: 2
+      roughness-bonus: 0.0
+      decoration-chance: 0.018
+      hazard-chance: 0.006
+      ruin-chance: 0.035
+      crate-chance: 0.10
+      spawner-chance: 0.0
+      palette: {STONE: 38, ANDESITE: 28, TUFF: 22, COBBLED_DEEPSLATE: 12}
+      surface-palette: {ANDESITE: 34, STONE: 28, TUFF: 24, GRAVEL: 8}
+      core-palette: {DEEPSLATE: 40, TUFF: 24, STONE: 20}
+      accent-blocks: {CALCITE: 16, DEEPSLATE_BRICKS: 10, GRAVEL: 8}
+      decorations: {STONE_BUTTON: 10, COBBLESTONE_WALL: 8, TORCH: 4}
+      hazard-blocks: {MAGMA_BLOCK: 1}
+      nodes: {COAL_ORE: 28, COPPER_ORE: 22, IRON_ORE: 36, REDSTONE_ORE: 5, LAPIS_ORE: 4}
+      crate-loot: {COAL: 12, RAW_COPPER: 8, IRON_INGOT: 5, BREAD: 3}
+      spawner-types: [ZOMBIE, SPIDER]
+    metallic:
+      weight: 20
+      min-tier: 2
+      max-tier: 3
+      roughness-bonus: 0.02
+      decoration-chance: 0.012
+      hazard-chance: 0.012
+      ruin-chance: 0.055
+      crate-chance: 0.16
+      spawner-chance: 0.025
+      palette: {DEEPSLATE: 30, TUFF: 22, IRON_BLOCK: 2, COPPER_BLOCK: 3, COBBLED_DEEPSLATE: 26}
+      surface-palette: {COBBLED_DEEPSLATE: 30, TUFF: 22, CUT_COPPER: 5, RAW_COPPER_BLOCK: 4}
+      core-palette: {DEEPSLATE: 38, BASALT: 22, SMOOTH_BASALT: 18}
+      accent-blocks: {CUT_COPPER: 14, IRON_BARS: 8, IRON_CHAIN: 6, DEEPSLATE_BRICKS: 10}
+      decorations: {IRON_CHAIN: 8, IRON_BARS: 8, LANTERN: 3}
+      hazard-blocks: {MAGMA_BLOCK: 3}
+      nodes: {IRON_ORE: 28, COPPER_ORE: 24, GOLD_ORE: 18, REDSTONE_ORE: 15, LAPIS_ORE: 8, DIAMOND_ORE: 2}
+      crate-loot: {IRON_INGOT: 10, COPPER_INGOT: 12, GOLD_INGOT: 4, REDSTONE: 12}
+      spawner-types: [SKELETON, ZOMBIE]
+    crystal:
+      weight: 18
+      min-tier: 2
+      max-tier: 3
+      roughness-bonus: 0.01
+      decoration-chance: 0.03
+      hazard-chance: 0.004
+      ruin-chance: 0.04
+      crate-chance: 0.18
+      spawner-chance: 0.015
+      palette: {CALCITE: 32, SMOOTH_BASALT: 22, AMETHYST_BLOCK: 5, TUFF: 18}
+      surface-palette: {CALCITE: 34, AMETHYST_BLOCK: 7, SMOOTH_BASALT: 18, TUFF: 14}
+      core-palette: {AMETHYST_BLOCK: 12, CALCITE: 28, SMOOTH_BASALT: 18}
+      accent-blocks: {AMETHYST_BLOCK: 16, BUDDING_AMETHYST: 3, GLOWSTONE: 3}
+      decorations: {AMETHYST_CLUSTER: 10, LARGE_AMETHYST_BUD: 8, MEDIUM_AMETHYST_BUD: 6, SMALL_AMETHYST_BUD: 4}
+      hazard-blocks: {MAGMA_BLOCK: 1}
+      nodes: {LAPIS_ORE: 24, REDSTONE_ORE: 22, EMERALD_ORE: 7, DIAMOND_ORE: 5, GOLD_ORE: 10, IRON_ORE: 14}
+      crate-loot: {AMETHYST_SHARD: 10, LAPIS_LAZULI: 12, EXPERIENCE_BOTTLE: 6, GLOWSTONE_DUST: 8}
+      spawner-types: [SPIDER, CAVE_SPIDER]
+    volcanic:
+      weight: 16
+      min-tier: 2
+      max-tier: 3
+      roughness-bonus: 0.05
+      decoration-chance: 0.01
+      hazard-chance: 0.04
+      ruin-chance: 0.05
+      crate-chance: 0.12
+      spawner-chance: 0.02
+      palette: {BASALT: 30, BLACKSTONE: 25, DEEPSLATE: 16, MAGMA_BLOCK: 5}
+      surface-palette: {BASALT: 28, BLACKSTONE: 24, MAGMA_BLOCK: 8, TUFF: 10}
+      core-palette: {BLACKSTONE: 30, DEEPSLATE: 18, OBSIDIAN: 4}
+      accent-blocks: {MAGMA_BLOCK: 18, OBSIDIAN: 5, BLACKSTONE: 12}
+      decorations: {SOUL_TORCH: 6, COBBLED_DEEPSLATE_WALL: 8}
+      hazard-blocks: {MAGMA_BLOCK: 10, CAMPFIRE: 1}
+      nodes: {GOLD_ORE: 22, REDSTONE_ORE: 18, IRON_ORE: 16, COAL_ORE: 14, DIAMOND_ORE: 4, EMERALD_ORE: 3}
+      crate-loot: {GOLD_INGOT: 5, MAGMA_CREAM: 3, COAL: 14, OBSIDIAN: 4}
+      spawner-types: [ZOMBIE, SKELETON]
+    icy:
+      weight: 14
+      min-tier: 1
+      max-tier: 2
+      roughness-bonus: -0.01
+      decoration-chance: 0.022
+      hazard-chance: 0.002
+      ruin-chance: 0.025
+      crate-chance: 0.10
+      spawner-chance: 0.0
+      palette: {PACKED_ICE: 18, BLUE_ICE: 4, CALCITE: 24, STONE: 18, TUFF: 14}
+      surface-palette: {PACKED_ICE: 20, CALCITE: 24, SNOW_BLOCK: 8, STONE: 16}
+      core-palette: {BLUE_ICE: 8, PACKED_ICE: 18, CALCITE: 20}
+      accent-blocks: {SEA_LANTERN: 2, CALCITE: 12, PACKED_ICE: 12}
+      decorations: {SNOW: 12, WHITE_CANDLE: 3}
+      hazard-blocks: {POWDER_SNOW: 1}
+      nodes: {COAL_ORE: 18, COPPER_ORE: 18, IRON_ORE: 34, LAPIS_ORE: 8, REDSTONE_ORE: 5}
+      crate-loot: {SNOWBALL: 16, PACKED_ICE: 8, IRON_INGOT: 4, EXPERIENCE_BOTTLE: 4}
+      spawner-types: [ZOMBIE]
+    ruined:
+      weight: 18
+      min-tier: 3
+      max-tier: 3
+      roughness-bonus: 0.04
+      decoration-chance: 0.02
+      hazard-chance: 0.018
+      ruin-chance: 0.11
+      crate-chance: 0.24
+      spawner-chance: 0.055
+      palette: {DEEPSLATE_BRICKS: 20, CRACKED_DEEPSLATE_BRICKS: 14, DEEPSLATE: 20, TUFF: 16, OBSIDIAN: 3}
+      surface-palette: {CRACKED_DEEPSLATE_BRICKS: 20, DEEPSLATE_BRICKS: 16, TUFF: 14, COBBLED_DEEPSLATE: 18}
+      core-palette: {DEEPSLATE: 28, OBSIDIAN: 6, BLACKSTONE: 16}
+      accent-blocks: {IRON_CHAIN: 8, IRON_BARS: 8, LANTERN: 4, CHISELED_DEEPSLATE: 8}
+      decorations: {IRON_CHAIN: 8, LANTERN: 5, COBBLED_DEEPSLATE_WALL: 8}
+      hazard-blocks: {MAGMA_BLOCK: 4, CAMPFIRE: 1}
+      nodes: {IRON_ORE: 35, GOLD_ORE: 14, REDSTONE_ORE: 12, LAPIS_ORE: 10, DIAMOND_ORE: 5, EMERALD_ORE: 4}
+      crate-loot: {DIAMOND: 1, GOLDEN_APPLE: 1, EXPERIENCE_BOTTLE: 8, ENDER_PEARL: 3, IRON_INGOT: 8}
+      spawner-types: [SKELETON, ZOMBIE, SPIDER]
+
+nether-seed: 993177
+nether-biome-radius: 160
+nether-node-respawn-seconds: 1200
+nether-ancient-debris-respawn-seconds: 7200
+nether-ancient-debris-active-cap: 4
+nether-pvp-hotspot-radius: 34

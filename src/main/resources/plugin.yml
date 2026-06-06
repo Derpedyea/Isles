@@ -1,0 +1,21 @@
+name: MineperialSkyblockCore
+main: net.mineperial.skyblockcore.MineperialSkyblockCorePlugin
+version: 1.0.0
+api-version: '26.1'
+description: Mineperial friend-SMP skyblock islands, center PvP resources, and void worlds.
+author: Mineperial
+load: STARTUP
+commands:
+  msb:
+    description: Mineperial Skyblock commands.
+    usage: /msb
+  setspawn:
+    description: Set your Skyblock island spawnpoint.
+    usage: /setspawn
+  team:
+    description: Manage Skyblock teams.
+    usage: /team
+permissions:
+  mineperial.skyblock.admin:
+    description: Allows Skyblock admin commands.
+    default: op
