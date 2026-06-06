@@ -13,6 +13,27 @@ node-respawn-seconds: 900
 pvp-only-in-center: true
 physical-travel-only: true
 
+passive-mobs:
+  ticks-per-spawn: 80
+  spawn-limit: 32
+  assist-enabled: true
+  check-seconds: 45
+  active-radius: 96
+  spawn-radius: 28
+  island-target: 10
+  spawns-per-check: 2
+  types: [COW, SHEEP, PIG, CHICKEN, RABBIT]
+
+wandering-traders:
+  vanilla-enabled: true
+  assist-enabled: true
+  check-seconds: 600
+  active-radius: 96
+  spawn-radius: 32
+  spawn-chance: 0.35
+  island-limit: 1
+  despawn-seconds: 1800
+
 center-seed: 776431
 void-drop-safe-radius: 2
 

@@ -43,6 +43,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Animals;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.Entity;
@@ -50,6 +51,8 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.SpawnCategory;
+import org.bukkit.entity.WanderingTrader;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -108,6 +111,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private static final int END_ARENA_CHUNK_RADIUS = 5;
   private static final int END_DRAGON_AGGRO_RANGE = 160;
   private static final Pattern TEAM_NAME_PATTERN = Pattern.compile("[A-Za-z0-9 -]{3,24}");
+  private static final List<EntityType> DEFAULT_PASSIVE_MOB_TYPES =
+      List.of(EntityType.COW, EntityType.SHEEP, EntityType.PIG, EntityType.CHICKEN, EntityType.RABBIT);
   private static final int[][] END_PILLARS = {
     {0, 56, 88}, {35, 45, 91}, {55, 18, 84}, {55, -18, 94}, {35, -45, 86},
     {0, -56, 92}, {-35, -45, 89}, {-55, -18, 96}, {-55, 18, 87}, {-35, 45, 93}
@@ -143,6 +148,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private boolean endUnlocked;
   private boolean eventActive;
   private long eventEndsAtMillis;
+  private long nextPassiveMobAssistAtMillis;
+  private long nextWanderingTraderAssistAtMillis;
   private long centerSeed = 776431L;
   private long netherSeed = 993177L;
   private long cachedCenterAsteroidSeed = Long.MIN_VALUE;
@@ -220,6 +227,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
             200L,
             600L);
     Bukkit.getScheduler().runTaskTimer(this, this::refreshEndDragonAggro, 80L, 100L);
+    Bukkit.getScheduler().runTaskTimer(this, this::refreshIslandMobSpawnAssists, 100L, 200L);
     updateAllPlayerTabNames();
     getLogger().info("Mineperial Skyblock Core enabled.");
   }
@@ -784,6 +792,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     World overworld = getOverworld();
     setBooleanGameRule(overworld, "keepInventory", false);
     setBooleanGameRule(overworld, "doImmediateRespawn", false);
+    applyOverworldMobSpawnSettings(overworld);
     overworld.setSpawnLocation(new Location(overworld, 0.5, getConfig().getInt("center-y", 92) + 24, 0.5));
     if (!eventActive && (!eventNodes.isEmpty() || !eventChests.isEmpty())) {
       clearEventContent();
@@ -805,6 +814,215 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     if (eventActive) {
       resumeEvent();
     }
+  }
+
+  private void applyOverworldMobSpawnSettings(World overworld) {
+    overworld.setTicksPerSpawns(
+        SpawnCategory.ANIMAL, configInt("passive-mobs.ticks-per-spawn", 80, 1, 1200));
+    overworld.setSpawnLimit(
+        SpawnCategory.ANIMAL, configInt("passive-mobs.spawn-limit", 32, 0, 128));
+    setBooleanGameRule(
+        overworld, "doTraderSpawning", getConfig().getBoolean("wandering-traders.vanilla-enabled", true));
+  }
+
+  private void refreshIslandMobSpawnAssists() {
+    long now = System.currentTimeMillis();
+
+    if (getConfig().getBoolean("passive-mobs.assist-enabled", true)
+        && now >= nextPassiveMobAssistAtMillis) {
+      nextPassiveMobAssistAtMillis =
+          now + configSecondsMillis("passive-mobs.check-seconds", 45, 5, 3600);
+      assistPassiveMobSpawns();
+    }
+
+    if (getConfig().getBoolean("wandering-traders.assist-enabled", true)
+        && now >= nextWanderingTraderAssistAtMillis) {
+      nextWanderingTraderAssistAtMillis =
+          now + configSecondsMillis("wandering-traders.check-seconds", 600, 30, 7200);
+      assistWanderingTraderSpawns();
+    }
+  }
+
+  private void assistPassiveMobSpawns() {
+    World world = Bukkit.getWorld(getWorldName());
+    if (world == null) {
+      return;
+    }
+
+    int activeRadius = configIslandAssistRadius("passive-mobs.active-radius", 96);
+    for (Island island : activeOverworldIslands(world, activeRadius)) {
+      spawnPassiveMobsForIsland(world, island);
+    }
+  }
+
+  private void spawnPassiveMobsForIsland(World world, Island island) {
+    int target = configInt("passive-mobs.island-target", 10, 0, 64);
+    if (target <= 0) {
+      return;
+    }
+
+    int radius = configIslandAssistRadius("passive-mobs.spawn-radius", 28);
+    Location center = islandEntityCenter(world, island);
+    long existing =
+        world.getNearbyEntities(center, radius, 64, radius).stream()
+            .filter(entity -> entity instanceof Animals)
+            .count();
+    int needed = target - (int) existing;
+    if (needed <= 0) {
+      return;
+    }
+
+    List<EntityType> types = passiveMobSpawnTypes();
+    Random random = ThreadLocalRandom.current();
+    int spawns = Math.min(needed, configInt("passive-mobs.spawns-per-check", 2, 1, 8));
+    for (int i = 0; i < spawns; i++) {
+      Location spawn = randomIslandSurfaceSpawnLocation(world, island, radius, true);
+      if (spawn == null) {
+        return;
+      }
+      EntityType type = types.get(random.nextInt(types.size()));
+      world.spawnEntity(spawn, type, CreatureSpawnEvent.SpawnReason.NATURAL);
+    }
+  }
+
+  private void assistWanderingTraderSpawns() {
+    World world = Bukkit.getWorld(getWorldName());
+    if (world == null) {
+      return;
+    }
+
+    int activeRadius = configIslandAssistRadius("wandering-traders.active-radius", 96);
+    for (Island island : activeOverworldIslands(world, activeRadius)) {
+      maybeSpawnWanderingTraderForIsland(world, island);
+    }
+  }
+
+  private void maybeSpawnWanderingTraderForIsland(World world, Island island) {
+    int limit = configInt("wandering-traders.island-limit", 1, 0, 4);
+    if (limit <= 0) {
+      return;
+    }
+
+    int radius = configIslandAssistRadius("wandering-traders.spawn-radius", 32);
+    Location center = islandEntityCenter(world, island);
+    long existing =
+        world.getNearbyEntities(center, radius, 64, radius).stream()
+            .filter(entity -> entity instanceof WanderingTrader)
+            .count();
+    if (existing >= limit) {
+      return;
+    }
+
+    double chance = configDouble("wandering-traders.spawn-chance", 0.35, 0.0, 1.0);
+    if (ThreadLocalRandom.current().nextDouble() >= chance) {
+      return;
+    }
+
+    Location spawn = randomIslandSurfaceSpawnLocation(world, island, radius, false);
+    if (spawn == null) {
+      return;
+    }
+
+    int despawnTicks = configInt("wandering-traders.despawn-seconds", 1800, 60, 7200) * 20;
+    Location wanderingTarget =
+        new Location(world, island.x + 0.5, getConfig().getInt("island-y", 88) + 1.0, island.z + 0.5);
+    world.spawn(
+        spawn,
+        WanderingTrader.class,
+        CreatureSpawnEvent.SpawnReason.NATURAL,
+        true,
+        trader -> {
+          trader.setDespawnDelay(despawnTicks);
+          trader.setWanderingTowards(wanderingTarget);
+        });
+  }
+
+  private List<Island> activeOverworldIslands(World world, int activeRadius) {
+    List<Island> active = new ArrayList<>();
+    Set<UUID> seen = new HashSet<>();
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      if (!player.getWorld().equals(world)) {
+        continue;
+      }
+
+      Island island = nearestIsland(player.getLocation(), activeRadius);
+      if (island != null && seen.add(island.ownerId)) {
+        active.add(island);
+      }
+    }
+    return active;
+  }
+
+  private Location islandEntityCenter(World world, Island island) {
+    return new Location(world, island.x + 0.5, getConfig().getInt("island-y", 88) + 8.0, island.z + 0.5);
+  }
+
+  private Location randomIslandSurfaceSpawnLocation(World world, Island island, int radius, boolean requireGrass) {
+    Random random = ThreadLocalRandom.current();
+    int islandY = getConfig().getInt("island-y", 88);
+    for (int attempt = 0; attempt < 48; attempt++) {
+      int x = island.x + random.nextInt(radius * 2 + 1) - radius;
+      int z = island.z + random.nextInt(radius * 2 + 1) - radius;
+      Block ground = world.getHighestBlockAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+      if (ground.getY() < islandY - 8 || ground.getY() > islandY + 48) {
+        continue;
+      }
+      if (!ground.isSolid() || ground.isLiquid()) {
+        continue;
+      }
+      if (requireGrass && ground.getType() != Material.GRASS_BLOCK) {
+        continue;
+      }
+
+      Block feet = world.getBlockAt(x, ground.getY() + 1, z);
+      Block head = world.getBlockAt(x, ground.getY() + 2, z);
+      if (!feet.isPassable() || !head.isPassable() || feet.isLiquid() || head.isLiquid()) {
+        continue;
+      }
+      if (requireGrass && feet.getLightLevel() < 9) {
+        continue;
+      }
+      return new Location(world, x + 0.5, ground.getY() + 1.0, z + 0.5);
+    }
+    return null;
+  }
+
+  private List<EntityType> passiveMobSpawnTypes() {
+    List<String> configuredTypes = getConfig().getStringList("passive-mobs.types");
+    if (configuredTypes.isEmpty()) {
+      return DEFAULT_PASSIVE_MOB_TYPES;
+    }
+
+    List<EntityType> types = new ArrayList<>();
+    for (String configuredType : configuredTypes) {
+      try {
+        EntityType type = EntityType.valueOf(configuredType.trim().toUpperCase(Locale.ROOT));
+        Class<? extends Entity> entityClass = type.getEntityClass();
+        if (type.isSpawnable() && entityClass != null && Animals.class.isAssignableFrom(entityClass)) {
+          types.add(type);
+        }
+      } catch (IllegalArgumentException ignored) {
+        // Invalid config entries are ignored so one typo does not disable all passive assists.
+      }
+    }
+    return types.isEmpty() ? DEFAULT_PASSIVE_MOB_TYPES : types;
+  }
+
+  private int configInt(String path, int fallback, int min, int max) {
+    return clamp(getConfig().getInt(path, fallback), min, max);
+  }
+
+  private double configDouble(String path, double fallback, double min, double max) {
+    return clamp(getConfig().getDouble(path, fallback), min, max);
+  }
+
+  private long configSecondsMillis(String path, int fallback, int min, int max) {
+    return (long) configInt(path, fallback, min, max) * 1000L;
+  }
+
+  private int configIslandAssistRadius(String path, int fallback) {
+    int spacingRadius = Math.max(8, getConfig().getInt("grid-spacing", 384) / 2 - 16);
+    return configInt(path, fallback, 4, Math.min(128, spacingRadius));
   }
 
   private void refreshConfigCache() {
