@@ -3,7 +3,7 @@ import { guidePages } from "../data/wiki";
 
 const {
 	title = "Mineperial Skyblock Wiki",
-	description = "Mineperial Skyblock member wiki for islands, teams, generator upgrades, center resources, Nether, End, PvP, and commands.",
+	description = "Mineperial Skyblock wiki for islands, teams, generator upgrades, center resources, Nether, End, PvP, commands, and staff tools.",
 	eyebrow = "Mineperial Skyblock Wiki",
 	activeSlug = "",
 } = Astro.props;
@@ -31,7 +31,7 @@ const {
 				<img src="/assets/minecraft/grass-block.png" alt="" />
 			</a>
 			<nav>
-				<p>Community</p>
+				<p>Wiki</p>
 				{
 					guidePages.map((item) => (
 						<a href={`/${item.slug}/`} aria-current={activeSlug === item.slug ? "page" : undefined}>
@@ -46,6 +46,7 @@ const {
 			<div class="tabs" aria-label="Page tabs">
 				<a href="/" aria-current={activeSlug === "" ? "page" : undefined}>Main Page</a>
 				<a href="/commands/" aria-current={activeSlug === "commands" ? "page" : undefined}>Commands</a>
+				<a href="/staff-tools/" aria-current={activeSlug === "staff-tools" ? "page" : undefined}>Staff</a>
 			</div>
 			<label class="search">
 				<span>Search Mineperial Wiki</span>

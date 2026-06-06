@@ -18,7 +18,17 @@ export const guidePages = [
 		icon: "/assets/minecraft/book.png",
 		text: "The member commands you will use most often.",
 		description: "A member-friendly command reference for islands, generator upgrades, spawns, and teams.",
-		search: "commands msb island generator upgrades setspawn team invite accept decline leave kick rename",
+		search: "commands msb island generator upgrades setspawn team invite accept decline leave kick rename help",
+	},
+	{
+		slug: "staff-tools",
+		title: "Staff Tools",
+		shortTitle: "Staff",
+		category: "Reference",
+		icon: "/assets/minecraft/diamond-chestplate.png",
+		text: "Admin-only maintenance, unlock, reset, and diagnostics commands.",
+		description: "Staff command reference for resets, unlocks, world generation, center events, and config reloads.",
+		search: "staff admin op permission mineperial.skyblock.admin event center nether biome worldreset unlock reload",
 	},
 	{
 		slug: "teams",
@@ -88,7 +98,9 @@ export const commands = [
 	["/msb upgrades", "Open the generator upgrades menu."],
 	["/msb upgrades buy <name>", "Buy a generator upgrade by friendly name, like iron or diamond."],
 	["/setspawn", "Set your island spawnpoint while standing on your island."],
+	["/msb setspawn", "Alias for /setspawn through the /msb command root."],
 	["/team", "Show Skyblock team commands."],
+	["/team help", "Show the team command help."],
 	["/team create <name>", "Create a team around your current island."],
 	["/team invite <player>", "Invite an online player to share your island."],
 	["/team accept", "Accept a pending invite. Your old solo island is wiped."],
@@ -98,6 +110,22 @@ export const commands = [
 	["/team rename <name>", "Leader only. Rename your team."],
 	["/team disband", "Leader only. Transfer leadership out of the team."],
 	["/team info", "Show your team leader and members."],
+];
+
+export const adminCommands = [
+	["/msb island create <player>", "Create an island for a player who has joined before. Online targets are teleported to it."],
+	["/msb island list", "List island owners, assignment slots, and coordinates."],
+	["/msb island wipe", "Clear all island blocks and reset island assignment."],
+	["/msb event start", "Start a Center event with bonus nodes and event crates."],
+	["/msb event stop", "Stop the active Center event and clear event-only content."],
+	["/msb center reset", "Rebuild the Center asteroid field, structures, crates, and resource nodes."],
+	["/msb center status", "Show Center seed, asteroid count, archetypes, event settings, structures, and config warnings."],
+	["/msb nether reset", "Rebuild the managed Nether archipelago, protected terrain, resource nodes, and mobs."],
+	["/msb biome fix", "Refresh managed world biome data: Plains for islands and Center, The Void for Nether and End areas."],
+	["/msb worldreset confirm", "Queue a full Skyblock world and data reset for the next server startup."],
+	["/msb unlock nether", "Unlock Nether portal travel and ensure the managed Nether archipelago exists."],
+	["/msb unlock end", "Unlock the End, build the shared arena, and create the Center End portal."],
+	["/msb reload", "Reload config and data, refresh generators and managed worlds, and update player tab names."],
 ];
 
 export const upgrades = [
@@ -144,9 +172,21 @@ export const netherIslands = [
 	["Debris Rifts", "Blackstone, magma, ancient debris, wither skeletons, and magma cubes."],
 ];
 
+export const netherDrops = [
+	["Nether Quartz Ore", "3 Quartz"],
+	["Glowstone", "4 Glowstone Dust"],
+	["Soul Sand", "1 Soul Sand + 2 Nether Wart"],
+	["Magma Block", "1 Magma Block + 1 Magma Cream"],
+	["Blackstone", "4 Blackstone"],
+	["Gilded Blackstone", "2 Blackstone + 6 Gold Nuggets"],
+	["Crimson Stem", "2 Crimson Stem + 1 Crimson Fungus"],
+	["Ancient Debris", "1 Netherite Scrap"],
+];
+
 export const safetyRules = [
 	"PvP is only enabled inside the center asteroid field and Nether bastion hotspots.",
-	"The action bar warns you when you enter or leave a PvP zone.",
+	"The sidebar and action bar show whether you are in a PvP zone, your shard count, generator progress, center distance, and event state.",
+	"Chat warns you when you enter or leave a PvP zone.",
 	"Island cores use lodestone and bedrock protection and cannot be broken.",
 	"In the center, only resource veins and temporary placed blocks can be mined.",
 	"In the managed Nether, only player bridges and Nether resource nodes can be mined.",

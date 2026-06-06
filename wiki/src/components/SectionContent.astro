@@ -1,5 +1,14 @@
 ---
-import { centerDrops, commands, guidePages, netherIslands, safetyRules, upgrades } from "../data/wiki";
+import {
+	adminCommands,
+	centerDrops,
+	commands,
+	guidePages,
+	netherDrops,
+	netherIslands,
+	safetyRules,
+	upgrades,
+} from "../data/wiki";
 
 const { page } = Astro.props;
 const slug = page.slug;
@@ -28,6 +37,8 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 						<li>Use <code>/msb island</code> to check your island coordinates.</li>
 						<li>Use <code>/setspawn</code> while standing on your island to set your return point.</li>
 						<li>Your island core uses lodestone and bedrock protection, so do not plan builds that require removing it.</li>
+						<li>The sidebar tracks your PvP zone, island coordinates, Center Shards, generator progress, Center distance, and active events.</li>
+						<li>Active islands can receive assisted passive animal spawns and occasional wandering trader checks.</li>
 					</ul>
 				</div>
 			</article>
@@ -75,6 +86,53 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 }
 
 {
+	slug === "staff-tools" && (
+		<>
+			<section class="band">
+				<h2>Staff Tools</h2>
+			</section>
+			<article class="article search-card" data-search={page.search}>
+				<header>
+					<p>{page.category}</p>
+					<h2>Admin Commands</h2>
+				</header>
+				<div class="section-copy">
+					<p>
+						These commands require <code>mineperial.skyblock.admin</code>, which defaults to operators.
+						They control world setup, Center events, dimension unlocks, and reset workflows.
+					</p>
+				</div>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th>Command</th>
+								<th>What It Does</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								adminCommands.map(([command, description]) => (
+									<tr>
+										<td><code>{command}</code></td>
+										<td>{description}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
+				</div>
+				<div class="note-row">
+					<p>New installs auto-register the Center generator for the overworld and void generators for the Nether and End.</p>
+					<p>Existing terrain may still need <code>/msb worldreset confirm</code> or a manual world reset to become true void terrain.</p>
+					<p>World reset requests are queued with a flag file and are processed on the next server startup before Paper loads the worlds.</p>
+				</div>
+			</article>
+		</>
+	)
+}
+
+{
 	slug === "teams" && (
 		<>
 			<section class="band">
@@ -108,7 +166,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 					<div>
 						<span>4</span>
 						<h3>Leave</h3>
-						<p>Members who leave or get kicked receive a fresh island. If a leader leaves a multi-player team, leadership transfers.</p>
+						<p>Members who leave or get kicked receive a fresh island. If a leader leaves or disbands a multi-player team, leadership transfers and the old leader receives a fresh island.</p>
 					</div>
 				</div>
 			</article>
@@ -177,10 +235,11 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 							Center Shards, mine renewable resource veins, find crates, and fight other players.
 						</p>
 						<ul>
-							<li>Center radius: about 160 blocks from 0,0.</li>
+							<li>Center radius: about 160 blocks from 0,0 by default.</li>
 							<li>PvP is enabled inside the center.</li>
 							<li>Regular resource veins respawn after about 15 minutes.</li>
 							<li>Center events last 20 minutes and add bonus nodes plus event crates.</li>
+							<li>The asteroid field includes rocky, metallic, crystal, volcanic, icy, and ruined archetypes with generated structures and crates.</li>
 						</ul>
 					</div>
 					<div class="stat-card">
@@ -229,7 +288,8 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				</header>
 				<p class="section-copy">
 					The Nether is locked until staff unlocks it for the SMP. Once unlocked, Nether portals
-					send you to a custom void archipelago instead of normal Nether terrain.
+					send you to the managed archipelago hub instead of normal Nether terrain. Returning from
+					the managed Nether sends you back to your island spawn.
 				</p>
 				<div class="list-grid">
 					{
@@ -243,8 +303,28 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				</div>
 				<div class="note-row">
 					<p>Nether resource nodes respawn after about 20 minutes.</p>
-					<p>Ancient debris nodes respawn after about 2 hours, with only a few active at once.</p>
-					<p>Bastion hotspots are PvP zones and give doubled drops from most Nether nodes.</p>
+					<p>Ancient debris nodes respawn after about 2 hours, with up to 4 active at once by default.</p>
+					<p>Bastion hotspots are PvP zones and double most Nether node drops. Ancient debris still drops one scrap.</p>
+				</div>
+				<div class="table-wrap compact">
+					<table>
+						<thead>
+							<tr>
+								<th>Node</th>
+								<th>Drop</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								netherDrops.map(([node, drop]) => (
+									<tr>
+										<td>{node}</td>
+										<td>{drop}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
 				</div>
 			</article>
 		</>
@@ -265,12 +345,12 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				<div class="section-copy">
 					<p>
 						The End is locked until staff unlocks it. When it opens, a shared End portal appears
-						at the center. Everyone uses the same void arena and dragon fight.
+						at the center above the asteroid field. Everyone uses the same void arena and dragon fight.
 					</p>
 					<ul>
 						<li>The entry platform is obsidian near the arena edge.</li>
-						<li>The arena is a round End Stone island with obsidian pillars and crystals.</li>
-						<li>The dragon stays active and targets nearby survival or adventure players.</li>
+						<li>The arena is a round End Stone island at Y 64 with obsidian pillars and crystals.</li>
+						<li>The dragon stays active and targets nearby survival or adventure players within about 160 blocks.</li>
 					</ul>
 				</div>
 			</article>
