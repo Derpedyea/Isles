@@ -1,11 +1,11 @@
 {
-	"compatibility_date": "2026-06-05",
-	"compatibility_flags": ["global_fetch_strictly_public"],
-	"name": "wiki",
-	"main": "@astrojs/cloudflare/entrypoints/server",
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "isles",
+	"compatibility_date": "2026-06-06",
 	"assets": {
 		"directory": "./dist",
-		"binding": "ASSETS"
+		"html_handling": "auto-trailing-slash",
+		"not_found_handling": "404-page"
 	},
 	"observability": {
 		"enabled": true
