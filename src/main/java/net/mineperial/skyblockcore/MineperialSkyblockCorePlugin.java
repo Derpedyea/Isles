@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -99,6 +101,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     implements Listener, CommandExecutor, TabCompleter {
   private static final String ADMIN_PERMISSION = "isles.admin";
   private static final String LEGACY_ADMIN_PERMISSION = "mineperial.skyblock.admin";
+  private static final String LEGACY_PLUGIN_NAME = "MineperialSkyblockCore";
+  private static final String LEGACY_PLUGIN_NAMESPACE = "mineperialskyblockcore";
   private static final String GENERATOR_ID_CENTER = "center";
   private static final String GENERATOR_ID_VOID = "void";
   private static final Material SHARD_MATERIAL = Material.AMETHYST_SHARD;
@@ -158,6 +162,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private YamlConfiguration data;
   private NamespacedKey shardKey;
   private NamespacedKey upgradeKey;
+  private NamespacedKey legacyShardKey;
+  private NamespacedKey legacyUpgradeKey;
   private int nextIslandSlot;
   private boolean netherUnlocked;
   private boolean endUnlocked;
@@ -177,7 +183,9 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   @Override
   public void onLoad() {
-    saveDefaultConfig();
+    ensureConfigFile();
+    getConfig().options().copyDefaults(true);
+    saveConfig();
     configureManagedWorldGenerators();
     performPendingFullWorldReset();
   }
@@ -202,6 +210,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   public void onEnable() {
     shardKey = new NamespacedKey(this, "center_shard");
     upgradeKey = new NamespacedKey(this, "upgrade_id");
+    legacyShardKey = new NamespacedKey(LEGACY_PLUGIN_NAMESPACE, "center_shard");
+    legacyUpgradeKey = new NamespacedKey(LEGACY_PLUGIN_NAMESPACE, "upgrade_id");
     registerUpgrades();
     loadData();
     refreshConfigCache();
@@ -211,6 +221,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
     Bukkit.getScheduler().runTask(this, this::initializeWorlds);
     scheduleRepeatingTasks();
+    migrateOnlineLegacyItemTags();
     updateAllPlayerTabNames();
     getLogger().info("Isles enabled.");
   }
@@ -260,6 +271,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   @EventHandler
   public void onPlayerJoin(PlayerJoinEvent event) {
     Player player = event.getPlayer();
+    migrateLegacyItemTags(player.getInventory());
     SkyblockTeam team = teamByMember.get(player.getUniqueId());
     Island island = effectiveIsland(player.getUniqueId());
     if (island == null) {
@@ -561,6 +573,13 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
             .getItemMeta()
             .getPersistentDataContainer()
             .get(upgradeKey, PersistentDataType.STRING);
+    if (upgradeId == null) {
+      upgradeId =
+          clicked
+              .getItemMeta()
+              .getPersistentDataContainer()
+              .get(legacyUpgradeKey, PersistentDataType.STRING);
+    }
     if (upgradeId == null) {
       return;
     }
@@ -1091,13 +1110,18 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private Set<String> knownUpgrades(Iterable<String> upgradeIds) {
-    Set<String> known = new HashSet<>();
+    Set<String> known = new LinkedHashSet<>();
     for (String upgradeId : upgradeIds) {
-      if (upgrades.containsKey(upgradeId)) {
-        known.add(upgradeId);
+      String normalizedUpgradeId = normalizeUpgradeId(upgradeId);
+      if (upgrades.containsKey(normalizedUpgradeId)) {
+        known.add(normalizedUpgradeId);
       }
     }
     return known;
+  }
+
+  private String normalizeUpgradeId(String upgradeId) {
+    return upgradeId == null ? "" : upgradeId.trim().toLowerCase(Locale.ROOT);
   }
 
   private int ownedUpgradeCount(Island island) {
@@ -1111,10 +1135,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private void loadData() {
-    dataFile = new File(getDataFolder(), "data.yml");
-    if (!dataFile.getParentFile().exists()) {
-      dataFile.getParentFile().mkdirs();
-    }
+    dataFile = resolveDataFile();
 
     data = YamlConfiguration.loadConfiguration(dataFile);
     islands.clear();
@@ -1195,6 +1216,114 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         }
       }
     }
+  }
+
+  private File resolveDataFile() {
+    File currentDataFile = new File(getDataFolder(), "data.yml");
+    File parent = currentDataFile.getParentFile();
+    if (parent != null && !parent.exists()) {
+      parent.mkdirs();
+    }
+    migrateLegacyDataFile(currentDataFile);
+    return currentDataFile;
+  }
+
+  private void migrateLegacyDataFile(File currentDataFile) {
+    File legacyDataFile = new File(legacyPluginDataFolder(), "data.yml");
+    if (!legacyDataFile.exists() || sameFile(currentDataFile, legacyDataFile)) {
+      return;
+    }
+
+    YamlConfiguration legacyData = YamlConfiguration.loadConfiguration(legacyDataFile);
+    if (!hasRuntimeData(legacyData)) {
+      return;
+    }
+
+    if (currentDataFile.exists()) {
+      YamlConfiguration currentData = YamlConfiguration.loadConfiguration(currentDataFile);
+      if (hasRuntimeData(currentData)) {
+        if (mergeLegacyIslandUpgrades(currentDataFile, currentData, legacyData)) {
+          getLogger().info("Merged legacy generator upgrade data into the Isles data folder.");
+          return;
+        }
+        getLogger()
+            .warning(
+                "Legacy "
+                    + LEGACY_PLUGIN_NAME
+                    + " data exists, but Isles data already has runtime state and no compatible upgrades to merge.");
+        return;
+      }
+    }
+
+    try {
+      Files.copy(legacyDataFile.toPath(), currentDataFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      getLogger().info("Migrated legacy " + LEGACY_PLUGIN_NAME + " data into the Isles data folder.");
+    } catch (IOException e) {
+      getLogger().warning("Could not migrate legacy " + LEGACY_PLUGIN_NAME + " data: " + e.getMessage());
+    }
+  }
+
+  private boolean mergeLegacyIslandUpgrades(
+      File currentDataFile, YamlConfiguration currentData, YamlConfiguration legacyData) {
+    ConfigurationSection currentIslands = currentData.getConfigurationSection("islands");
+    ConfigurationSection legacyIslands = legacyData.getConfigurationSection("islands");
+    if (currentIslands == null || legacyIslands == null) {
+      return false;
+    }
+
+    boolean changed = false;
+    for (String ownerId : legacyIslands.getKeys(false)) {
+      ConfigurationSection currentIsland = currentIslands.getConfigurationSection(ownerId);
+      ConfigurationSection legacyIsland = legacyIslands.getConfigurationSection(ownerId);
+      if (currentIsland == null || legacyIsland == null) {
+        continue;
+      }
+
+      Set<String> mergedUpgrades = new LinkedHashSet<>(knownUpgrades(currentIsland.getStringList("upgrades")));
+      int beforeSize = mergedUpgrades.size();
+      mergedUpgrades.addAll(knownUpgrades(legacyIsland.getStringList("upgrades")));
+      if (mergedUpgrades.size() > beforeSize) {
+        currentData.set("islands." + ownerId + ".upgrades", new ArrayList<>(mergedUpgrades));
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return false;
+    }
+
+    try {
+      currentData.save(currentDataFile);
+      return true;
+    } catch (IOException e) {
+      getLogger().warning("Could not merge legacy upgrade data: " + e.getMessage());
+      return false;
+    }
+  }
+
+  private boolean hasRuntimeData(YamlConfiguration dataConfig) {
+    return hasEntries(dataConfig.getConfigurationSection("islands"))
+        || hasEntries(dataConfig.getConfigurationSection("teams"))
+        || dataConfig.getInt("next-island-slot", 0) > 0
+        || dataConfig.getBoolean("unlocks.nether", false)
+        || dataConfig.getBoolean("unlocks.end", false);
+  }
+
+  private boolean hasEntries(ConfigurationSection section) {
+    return section != null && !section.getKeys(false).isEmpty();
+  }
+
+  private boolean sameFile(File first, File second) {
+    try {
+      return first.getCanonicalFile().equals(second.getCanonicalFile());
+    } catch (IOException e) {
+      return first.getAbsolutePath().equals(second.getAbsolutePath());
+    }
+  }
+
+  private File legacyPluginDataFolder() {
+    File pluginsFolder = getDataFolder().getParentFile();
+    return pluginsFolder == null ? new File(LEGACY_PLUGIN_NAME) : new File(pluginsFolder, LEGACY_PLUGIN_NAME);
   }
 
   private void loadTeams(ConfigurationSection teamSection) {
@@ -2636,7 +2765,61 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return false;
     }
     ItemMeta meta = item.getItemMeta();
-    return meta != null && meta.getPersistentDataContainer().has(shardKey, PersistentDataType.INTEGER);
+    return meta != null
+        && (meta.getPersistentDataContainer().has(shardKey, PersistentDataType.INTEGER)
+            || meta.getPersistentDataContainer().has(legacyShardKey, PersistentDataType.INTEGER));
+  }
+
+  private void migrateOnlineLegacyItemTags() {
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      migrateLegacyItemTags(player.getInventory());
+    }
+  }
+
+  private void migrateLegacyItemTags(PlayerInventory inventory) {
+    if (inventory == null) {
+      return;
+    }
+
+    ItemStack[] contents = inventory.getContents();
+    for (int slot = 0; slot < contents.length; slot++) {
+      ItemStack item = contents[slot];
+      if (migrateLegacyItemTag(item)) {
+        inventory.setItem(slot, item);
+      }
+    }
+  }
+
+  private boolean migrateLegacyItemTag(ItemStack item) {
+    if (item == null || !item.hasItemMeta()) {
+      return false;
+    }
+
+    ItemMeta meta = item.getItemMeta();
+    if (meta == null) {
+      return false;
+    }
+
+    boolean changed = false;
+    if (item.getType() == SHARD_MATERIAL
+        && meta.getPersistentDataContainer().has(legacyShardKey, PersistentDataType.INTEGER)
+        && !meta.getPersistentDataContainer().has(shardKey, PersistentDataType.INTEGER)) {
+      meta.getPersistentDataContainer().set(shardKey, PersistentDataType.INTEGER, 1);
+      meta.getPersistentDataContainer().remove(legacyShardKey);
+      changed = true;
+    }
+
+    String legacyUpgradeId = meta.getPersistentDataContainer().get(legacyUpgradeKey, PersistentDataType.STRING);
+    if (legacyUpgradeId != null && !meta.getPersistentDataContainer().has(upgradeKey, PersistentDataType.STRING)) {
+      meta.getPersistentDataContainer().set(upgradeKey, PersistentDataType.STRING, legacyUpgradeId);
+      meta.getPersistentDataContainer().remove(legacyUpgradeKey);
+      changed = true;
+    }
+
+    if (changed) {
+      item.setItemMeta(meta);
+    }
+    return changed;
   }
 
   private void startEvent(CommandSender sender) {
@@ -4001,6 +4184,31 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     return true;
   }
 
+  private void ensureConfigFile() {
+    File currentConfigFile = new File(getDataFolder(), "config.yml");
+    if (currentConfigFile.exists()) {
+      return;
+    }
+
+    File parent = currentConfigFile.getParentFile();
+    if (parent != null && !parent.exists()) {
+      parent.mkdirs();
+    }
+
+    File legacyConfigFile = new File(legacyPluginDataFolder(), "config.yml");
+    if (legacyConfigFile.exists() && !sameFile(currentConfigFile, legacyConfigFile)) {
+      try {
+        Files.copy(legacyConfigFile.toPath(), currentConfigFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        getLogger().info("Migrated legacy " + LEGACY_PLUGIN_NAME + " config into the Isles data folder.");
+        return;
+      } catch (IOException e) {
+        getLogger().warning("Could not migrate legacy " + LEGACY_PLUGIN_NAME + " config: " + e.getMessage());
+      }
+    }
+
+    saveDefaultConfig();
+  }
+
   private void configureManagedWorldGenerators() {
     if (!getConfig().getBoolean("auto-register-world-generators", true)) {
       return;
@@ -4093,8 +4301,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void performPendingFullWorldReset() {
     Path dataFolderPath = getDataFolder().toPath();
-    Path flag = dataFolderPath.resolve("full-world-reset.flag");
-    if (!Files.exists(flag)) {
+    Path flag = pendingFullWorldResetFlag(dataFolderPath);
+    if (flag == null) {
       return;
     }
 
@@ -4123,18 +4331,39 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         getLogger().warning("Backed up " + worldName + " to " + backupPath + ".");
       }
 
-      Path dataPath = dataFolderPath.resolve("data.yml");
-      if (Files.exists(dataPath)) {
-        Path dataBackup = backupRoot.resolve("isles-data-reset-" + timestamp + ".yml");
-        Files.move(dataPath, dataBackup);
-        getLogger().warning("Backed up Isles plugin data to " + dataBackup + ".");
+      backupPluginDataFile(dataFolderPath.resolve("data.yml"), backupRoot.resolve("isles-data-reset-" + timestamp + ".yml"));
+
+      Path legacyDataPath = legacyPluginDataFolder().toPath().resolve("data.yml");
+      if (!sameFile(dataFolderPath.resolve("data.yml").toFile(), legacyDataPath.toFile())) {
+        backupPluginDataFile(
+            legacyDataPath, backupRoot.resolve("mineperial-skyblock-core-data-reset-" + timestamp + ".yml"));
       }
 
-      Files.deleteIfExists(flag);
+      Files.deleteIfExists(dataFolderPath.resolve("full-world-reset.flag"));
+      Files.deleteIfExists(legacyPluginDataFolder().toPath().resolve("full-world-reset.flag"));
       getLogger().warning("Full Isles reset applied. Fresh world/data will be generated this startup.");
     } catch (IOException e) {
       getLogger().warning("Could not apply pending full Isles reset: " + e.getMessage());
     }
+  }
+
+  private Path pendingFullWorldResetFlag(Path dataFolderPath) {
+    Path currentFlag = dataFolderPath.resolve("full-world-reset.flag");
+    if (Files.exists(currentFlag)) {
+      return currentFlag;
+    }
+
+    Path legacyFlag = legacyPluginDataFolder().toPath().resolve("full-world-reset.flag");
+    return Files.exists(legacyFlag) ? legacyFlag : null;
+  }
+
+  private void backupPluginDataFile(Path dataPath, Path backupPath) throws IOException {
+    if (!Files.exists(dataPath)) {
+      return;
+    }
+
+    Files.move(dataPath, backupPath);
+    getLogger().warning("Backed up plugin data to " + backupPath + ".");
   }
 
   private Set<String> configuredWorldNamesForReset() {

@@ -43,7 +43,12 @@ $Jar = if ($JavaBin -and (Test-Path (Join-Path $JavaBin "jar.exe"))) {
 $BuildDir = Join-Path $PluginRoot "build"
 $ClassesDir = Join-Path $BuildDir "classes"
 $JarPath = Join-Path $BuildDir "isles-1.0.0.jar"
-$DeployPath = Join-Path $Root "skyblock\plugins\isles-1.0.0.jar"
+$PluginsDir = Join-Path $Root "skyblock\plugins"
+$DeployPath = Join-Path $PluginsDir "isles-1.0.0.jar"
+$LegacyPluginJarPatterns = @(
+  "mineperial-skyblock-core-*.jar",
+  "MineperialSkyblockCore-*.jar"
+)
 
 if (Test-Path $BuildDir) {
   Remove-Item -Recurse -Force $BuildDir
@@ -77,5 +82,25 @@ try {
 }
 
 Copy-Item -Path $JarPath -Destination $DeployPath -Force
+
+$DisabledLegacyDir = Join-Path $PluginsDir "disabled-legacy"
+foreach ($Pattern in $LegacyPluginJarPatterns) {
+  $LegacyJars = Get-ChildItem -Path $PluginsDir -Filter $Pattern -File -ErrorAction SilentlyContinue
+  foreach ($LegacyJar in $LegacyJars) {
+    if (-not (Test-Path $DisabledLegacyDir)) {
+      New-Item -ItemType Directory -Force -Path $DisabledLegacyDir | Out-Null
+    }
+
+    $Destination = Join-Path $DisabledLegacyDir ($LegacyJar.Name + ".disabled")
+    if (Test-Path $Destination) {
+      $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+      $Destination = Join-Path $DisabledLegacyDir ($LegacyJar.BaseName + "-$Timestamp" + $LegacyJar.Extension + ".disabled")
+    }
+
+    Move-Item -LiteralPath $LegacyJar.FullName -Destination $Destination -Force
+    Write-Host "Archived legacy plugin jar $($LegacyJar.FullName) -> $Destination"
+  }
+}
+
 Write-Host "Built $JarPath"
 Write-Host "Deployed $DeployPath"
