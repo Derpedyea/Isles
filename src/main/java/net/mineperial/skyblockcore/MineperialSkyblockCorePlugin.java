@@ -22,6 +22,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
@@ -40,6 +43,7 @@ import org.bukkit.boss.DragonBattle;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -111,6 +115,15 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private static final int END_ARENA_CHUNK_RADIUS = 5;
   private static final int END_DRAGON_AGGRO_RANGE = 160;
   private static final Pattern TEAM_NAME_PATTERN = Pattern.compile("[A-Za-z0-9 -]{3,24}");
+  private static final List<String> PUBLIC_MSB_COMMANDS = List.of("island", "upgrades", "setspawn");
+  private static final List<String> ADMIN_MSB_COMMANDS =
+      List.of("event", "center", "nether", "biome", "worldreset", "unlock", "reload");
+  private static final List<String> TEAM_SUBCOMMANDS =
+      List.of("create", "invite", "accept", "decline", "leave", "kick", "rename", "disband", "info");
+  private static final List<String> ISLAND_ADMIN_SUBCOMMANDS = List.of("create", "list", "wipe");
+  private static final List<String> EVENT_ADMIN_SUBCOMMANDS = List.of("start", "stop");
+  private static final List<String> CENTER_ADMIN_SUBCOMMANDS = List.of("reset", "status");
+  private static final List<String> UNLOCK_ADMIN_SUBCOMMANDS = List.of("nether", "end");
   private static final List<EntityType> DEFAULT_PASSIVE_MOB_TYPES =
       List.of(EntityType.COW, EntityType.SHEEP, EntityType.PIG, EntityType.CHICKEN, EntityType.RABBIT);
   private static final int[][] END_PILLARS = {
@@ -135,6 +148,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private final List<NetherHotspot> netherHotspots = new ArrayList<>();
   private final Map<String, Upgrade> upgrades = new LinkedHashMap<>();
   private final Map<UUID, Boolean> pvpZoneState = new HashMap<>();
+  private final Map<UUID, List<String>> lastScoreboardLines = new HashMap<>();
   private final Map<String, SkyblockTeam> teams = new LinkedHashMap<>();
   private final Map<UUID, SkyblockTeam> teamByMember = new HashMap<>();
   private final Map<UUID, TeamInvite> pendingTeamInvites = new HashMap<>();
@@ -192,44 +206,47 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     refreshConfigCache();
 
     Bukkit.getPluginManager().registerEvents(this, this);
-    if (getCommand("msb") != null) {
-      getCommand("msb").setExecutor(this);
-      getCommand("msb").setTabCompleter(this);
-    }
-    if (getCommand("setspawn") != null) {
-      getCommand("setspawn").setExecutor(this);
-      getCommand("setspawn").setTabCompleter(this);
-    }
-    if (getCommand("team") != null) {
-      getCommand("team").setExecutor(this);
-      getCommand("team").setTabCompleter(this);
-    }
+    registerCommands();
 
     Bukkit.getScheduler().runTask(this, this::initializeWorlds);
-    Bukkit.getScheduler()
-        .runTaskTimer(
-            this,
-            () -> {
-              for (Player player : Bukkit.getOnlinePlayers()) {
-                updatePlayerHud(player);
-              }
-            },
-            40L,
-            40L);
-    Bukkit.getScheduler()
-        .runTaskTimer(
-            this,
-            () -> {
-              if (netherUnlocked) {
-                refreshNetherMobs();
-              }
-            },
-            200L,
-            600L);
-    Bukkit.getScheduler().runTaskTimer(this, this::refreshEndDragonAggro, 80L, 100L);
-    Bukkit.getScheduler().runTaskTimer(this, this::refreshIslandMobSpawnAssists, 100L, 200L);
+    scheduleRepeatingTasks();
     updateAllPlayerTabNames();
     getLogger().info("Mineperial Skyblock Core enabled.");
+  }
+
+  private void registerCommands() {
+    registerCommand("msb");
+    registerCommand("setspawn");
+    registerCommand("team");
+  }
+
+  private void registerCommand(String name) {
+    PluginCommand command = getCommand(name);
+    if (command == null) {
+      getLogger().warning("Command '" + name + "' is missing from plugin.yml.");
+      return;
+    }
+    command.setExecutor(this);
+    command.setTabCompleter(this);
+  }
+
+  private void scheduleRepeatingTasks() {
+    Bukkit.getScheduler().runTaskTimer(this, this::updateOnlinePlayerHuds, 40L, 40L);
+    Bukkit.getScheduler().runTaskTimer(this, this::refreshNetherMobsIfUnlocked, 200L, 600L);
+    Bukkit.getScheduler().runTaskTimer(this, this::refreshEndDragonAggro, 80L, 100L);
+    Bukkit.getScheduler().runTaskTimer(this, this::refreshIslandMobSpawnAssists, 100L, 200L);
+  }
+
+  private void updateOnlinePlayerHuds() {
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      updatePlayerHud(player);
+    }
+  }
+
+  private void refreshNetherMobsIfUnlocked() {
+    if (netherUnlocked) {
+      refreshNetherMobs();
+    }
   }
 
   @Override
@@ -260,7 +277,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
                 return;
               }
               if (!player.hasPlayedBefore()
-                  || player.getWorld().getName().equals(getWorldName())
+                  || isSkyblockOverworld(player.getWorld())
                       && player.getLocation().distanceSquared(getOverworld().getSpawnLocation()) < 64) {
                 player.teleport(islandSpawnLocation(finalIsland));
               }
@@ -289,6 +306,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   public void onPlayerQuit(PlayerQuitEvent event) {
     UUID playerId = event.getPlayer().getUniqueId();
     pvpZoneState.remove(playerId);
+    lastScoreboardLines.remove(playerId);
     pendingTeamInvites.remove(playerId);
     pendingTeamInvites.entrySet().removeIf(entry -> entry.getValue().inviterId.equals(playerId));
   }
@@ -507,7 +525,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
-    Random random = new Random();
+    Random random = ThreadLocalRandom.current();
     if (island.upgrades.contains("generator_diamond") && random.nextDouble() < 0.02) {
       event.getNewState().setType(Material.DIAMOND_ORE);
     } else if (island.upgrades.contains("generator_gold") && random.nextDouble() < 0.05) {
@@ -571,6 +589,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
+    World fromWorld = event.getFrom().getWorld();
     World.Environment targetEnvironment = to.getWorld().getEnvironment();
     if (targetEnvironment == World.Environment.NETHER && !netherUnlocked) {
       event.setCancelled(true);
@@ -581,6 +600,11 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     if (targetEnvironment == World.Environment.NETHER) {
       World nether = ensureNetherWorld();
       event.setTo(netherEntryLocation(nether, event.getPlayer()));
+      return;
+    }
+
+    if (isManagedNetherWorld(fromWorld) && targetEnvironment == World.Environment.NORMAL) {
+      event.setTo(netherReturnLocation(event.getPlayer()));
       return;
     }
 
@@ -625,7 +649,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     Player player = event.getPlayer();
     World world = player.getWorld();
     if (world.getEnvironment() == World.Environment.NETHER) {
-      if (world.getName().equals(getNetherWorldName())) {
+      if (isManagedNetherWorld(world)) {
         ensureNetherArchipelago(world, false);
         updatePlayerHud(player);
         return;
@@ -744,25 +768,25 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     if (args.length == 1) {
-      List<String> root = new ArrayList<>(Arrays.asList("island", "upgrades", "setspawn"));
+      List<String> root = new ArrayList<>(PUBLIC_MSB_COMMANDS);
       if (sender.hasPermission(ADMIN_PERMISSION)) {
-        root.addAll(Arrays.asList("event", "center", "nether", "biome", "worldreset", "unlock", "reload"));
+        root.addAll(ADMIN_MSB_COMMANDS);
       }
       return filter(root, args[0]);
     }
 
     if (args.length == 2) {
       if (args[0].equalsIgnoreCase("island") && sender.hasPermission(ADMIN_PERMISSION)) {
-        return filter(Arrays.asList("create", "list", "wipe"), args[1]);
+        return filter(ISLAND_ADMIN_SUBCOMMANDS, args[1]);
       }
       if (args[0].equalsIgnoreCase("upgrades")) {
         return filter(Collections.singletonList("buy"), args[1]);
       }
       if (args[0].equalsIgnoreCase("event") && sender.hasPermission(ADMIN_PERMISSION)) {
-        return filter(Arrays.asList("start", "stop"), args[1]);
+        return filter(EVENT_ADMIN_SUBCOMMANDS, args[1]);
       }
       if (args[0].equalsIgnoreCase("center") && sender.hasPermission(ADMIN_PERMISSION)) {
-        return filter(Arrays.asList("reset", "status"), args[1]);
+        return filter(CENTER_ADMIN_SUBCOMMANDS, args[1]);
       }
       if (args[0].equalsIgnoreCase("nether") && sender.hasPermission(ADMIN_PERMISSION)) {
         return filter(Collections.singletonList("reset"), args[1]);
@@ -774,7 +798,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         return filter(Collections.singletonList("confirm"), args[1]);
       }
       if (args[0].equalsIgnoreCase("unlock") && sender.hasPermission(ADMIN_PERMISSION)) {
-        return filter(Arrays.asList("nether", "end"), args[1]);
+        return filter(UNLOCK_ADMIN_SUBCOMMANDS, args[1]);
       }
     }
 
@@ -863,10 +887,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
     int radius = configIslandAssistRadius("passive-mobs.spawn-radius", 28);
     Location center = islandEntityCenter(world, island);
-    long existing =
-        world.getNearbyEntities(center, radius, 64, radius).stream()
-            .filter(entity -> entity instanceof Animals)
-            .count();
+    long existing = countNearbyEntities(center, radius, 64, radius, entity -> entity instanceof Animals);
     int needed = target - (int) existing;
     if (needed <= 0) {
       return;
@@ -905,10 +926,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
     int radius = configIslandAssistRadius("wandering-traders.spawn-radius", 32);
     Location center = islandEntityCenter(world, island);
-    long existing =
-        world.getNearbyEntities(center, radius, 64, radius).stream()
-            .filter(entity -> entity instanceof WanderingTrader)
-            .count();
+    long existing = countNearbyEntities(center, radius, 64, radius, entity -> entity instanceof WanderingTrader);
     if (existing >= limit) {
       return;
     }
@@ -935,6 +953,15 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
           trader.setDespawnDelay(despawnTicks);
           trader.setWanderingTowards(wanderingTarget);
         });
+  }
+
+  private long countNearbyEntities(
+      Location center, double radiusX, double radiusY, double radiusZ, Predicate<Entity> matcher) {
+    World world = center.getWorld();
+    if (world == null) {
+      return 0L;
+    }
+    return world.getNearbyEntities(center, radiusX, radiusY, radiusZ).stream().filter(matcher).count();
   }
 
   private List<Island> activeOverworldIslands(World world, int activeRadius) {
@@ -2328,22 +2355,30 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private void applyMinedNodeState() {
+    applyMinedNodeState(minedNodes, nodeMaterialByKey, this::scheduleNodeRespawn, this::respawnCenterNode);
+  }
+
+  private void applyMinedNodeState(
+      Map<String, MinedNode> nodeStates,
+      Map<String, Material> activeNodes,
+      BiConsumer<String, Long> scheduler,
+      BiConsumer<String, Material> respawner) {
     long now = System.currentTimeMillis();
     List<String> ready = new ArrayList<>();
-    for (Map.Entry<String, MinedNode> entry : minedNodes.entrySet()) {
+    for (Map.Entry<String, MinedNode> entry : nodeStates.entrySet()) {
       String key = entry.getKey();
       MinedNode mined = entry.getValue();
       if (mined.respawnAtMillis <= now) {
         ready.add(key);
         continue;
       }
-      scheduleNodeRespawn(key, mined.respawnAtMillis - now);
+      scheduler.accept(key, mined.respawnAtMillis - now);
     }
 
     for (String key : ready) {
-      MinedNode mined = minedNodes.remove(key);
-      if (nodeMaterialByKey.containsKey(key)) {
-        respawnCenterNode(key, mined.material);
+      MinedNode mined = nodeStates.remove(key);
+      if (activeNodes.containsKey(key)) {
+        respawner.accept(key, mined.material);
       }
     }
     if (!ready.isEmpty()) {
@@ -2357,9 +2392,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     Material replacement = eventNodes.contains(key) ? Material.AIR : centerStoneMaterial(block.getX(), block.getY(), block.getZ());
     block.setType(replacement, false);
 
-    for (ItemStack drop : nodeDrops(nodeMaterial)) {
-      block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), drop);
-    }
+    dropItemsNaturally(block, nodeDrops(nodeMaterial));
 
     long respawnAt = System.currentTimeMillis() + getConfig().getLong("node-respawn-seconds", 900L) * 1000L;
     Material respawnMaterial = eventNodes.contains(key) ? nodeMaterial : randomRespawnNodeMaterial(block, nodeMaterial);
@@ -2369,36 +2402,40 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private boolean isDepletedNode(String key) {
-    MinedNode mined = minedNodes.get(key);
-    return mined != null && mined.respawnAtMillis > System.currentTimeMillis();
+    return isDepletedNode(minedNodes, key);
   }
 
   private void scheduleNodeRespawn(String key, long delayMillis) {
+    scheduleMinedNodeRespawn(key, delayMillis, minedNodes, nodeMaterialByKey, this::respawnCenterNode, true);
+  }
+
+  private void scheduleMinedNodeRespawn(
+      String key,
+      long delayMillis,
+      Map<String, MinedNode> nodeStates,
+      Map<String, Material> activeNodes,
+      BiConsumer<String, Material> respawner,
+      boolean requireLoadedBlock) {
     long ticks = Math.max(20L, delayMillis / 50L);
     Bukkit.getScheduler()
         .runTaskLater(
             this,
             () -> {
-              MinedNode mined = minedNodes.get(key);
+              MinedNode mined = nodeStates.get(key);
               if (mined == null || mined.respawnAtMillis > System.currentTimeMillis()) {
                 return;
               }
-              Block block = blockFromKey(key);
-              if (block != null && nodeMaterialByKey.containsKey(key)) {
-                respawnCenterNode(key, mined.material);
+              if (activeNodes.containsKey(key) && (!requireLoadedBlock || blockFromKey(key) != null)) {
+                respawner.accept(key, mined.material);
               }
-              minedNodes.remove(key);
+              nodeStates.remove(key);
               saveData();
             },
             ticks);
   }
 
   private void respawnCenterNode(String key, Material material) {
-    Block block = blockFromKey(key);
-    if (block != null) {
-      block.setType(material, false);
-    }
-    nodeMaterialByKey.put(key, material);
+    respawnNode(key, material, nodeMaterialByKey);
   }
 
   private Material randomRespawnNodeMaterial(Block block, Material previousMaterial) {
@@ -2480,32 +2517,11 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private void applyNetherMinedNodeState() {
-    long now = System.currentTimeMillis();
-    List<String> ready = new ArrayList<>();
-    for (Map.Entry<String, MinedNode> entry : netherMinedNodes.entrySet()) {
-      String key = entry.getKey();
-      MinedNode mined = entry.getValue();
-      if (mined.respawnAtMillis <= now) {
-        ready.add(key);
-        continue;
-      }
-      scheduleNetherNodeRespawn(key, mined.respawnAtMillis - now);
-    }
-
-    for (String key : ready) {
-      MinedNode mined = netherMinedNodes.remove(key);
-      if (netherNodeMaterialByKey.containsKey(key)) {
-        respawnNetherNode(key, mined.material);
-      }
-    }
-    if (!ready.isEmpty()) {
-      saveData();
-    }
+    applyMinedNodeState(netherMinedNodes, netherNodeMaterialByKey, this::scheduleNetherNodeRespawn, this::respawnNetherNode);
   }
 
   private boolean isDepletedNetherNode(String key) {
-    MinedNode mined = netherMinedNodes.get(key);
-    return mined != null && mined.respawnAtMillis > System.currentTimeMillis();
+    return isDepletedNode(netherMinedNodes, key);
   }
 
   private void mineNetherNode(BlockBreakEvent event, String key, Material nodeMaterial) {
@@ -2514,9 +2530,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     block.setType(netherPlaceholderMaterial(nodeMaterial), false);
 
     boolean hotspot = isInNetherHotspot(block.getLocation());
-    for (ItemStack drop : netherNodeDrops(nodeMaterial, hotspot)) {
-      block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), drop);
-    }
+    dropItemsNaturally(block, netherNodeDrops(nodeMaterial, hotspot));
 
     long seconds =
         nodeMaterial == Material.ANCIENT_DEBRIS
@@ -2529,30 +2543,31 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private void scheduleNetherNodeRespawn(String key, long delayMillis) {
-    long ticks = Math.max(20L, delayMillis / 50L);
-    Bukkit.getScheduler()
-        .runTaskLater(
-            this,
-            () -> {
-              MinedNode mined = netherMinedNodes.get(key);
-              if (mined == null || mined.respawnAtMillis > System.currentTimeMillis()) {
-                return;
-              }
-              if (netherNodeMaterialByKey.containsKey(key)) {
-                respawnNetherNode(key, mined.material);
-              }
-              netherMinedNodes.remove(key);
-              saveData();
-            },
-            ticks);
+    scheduleMinedNodeRespawn(key, delayMillis, netherMinedNodes, netherNodeMaterialByKey, this::respawnNetherNode, false);
   }
 
   private void respawnNetherNode(String key, Material material) {
+    respawnNode(key, material, netherNodeMaterialByKey);
+  }
+
+  private void respawnNode(String key, Material material, Map<String, Material> activeNodes) {
     Block block = blockFromKey(key);
     if (block != null) {
       block.setType(material, false);
     }
-    netherNodeMaterialByKey.put(key, material);
+    activeNodes.put(key, material);
+  }
+
+  private boolean isDepletedNode(Map<String, MinedNode> nodeStates, String key) {
+    MinedNode mined = nodeStates.get(key);
+    return mined != null && mined.respawnAtMillis > System.currentTimeMillis();
+  }
+
+  private void dropItemsNaturally(Block block, List<ItemStack> drops) {
+    Location dropLocation = block.getLocation().add(0.5, 0.5, 0.5);
+    for (ItemStack drop : drops) {
+      block.getWorld().dropItemNaturally(dropLocation, drop);
+    }
   }
 
   private Material netherPlaceholderMaterial(Material material) {
@@ -2699,7 +2714,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       boolean wasMined = minedNodes.remove(key) != null;
       Block block = blockFromKey(key);
       if (block != null && (wasMined || eventMaterial == null || block.getType() == eventMaterial)) {
-        block.setType(Material.AIR, false);
+        clearBlock(block);
       }
     }
     eventNodes.clear();
@@ -2707,7 +2722,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     for (String key : new ArrayList<>(eventChests)) {
       Block block = blockFromKey(key);
       if (block != null && block.getType() == Material.CHEST) {
-        block.setType(Material.AIR, false);
+        clearBlock(block);
       }
     }
     eventChests.clear();
@@ -2716,29 +2731,63 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private void spawnEventContent() {
     CenterGeneratorSettings settings = centerGeneratorSettings();
     Random random = new Random(System.currentTimeMillis());
-    for (int i = 0; i < settings.eventNodeCount; i++) {
-      Location surface = randomCenterSurface(random);
-      if (surface == null) {
+
+    placeEventContent(
+        settings.eventNodeCount,
+        32,
+        random,
+        block -> {
+          String key = locationKey(block.getLocation());
+          Material material = settings.eventNodeMaterials.choose(random);
+          block.setType(material, false);
+          eventNodes.add(key);
+          nodeMaterialByKey.put(key, material);
+        });
+
+    placeEventContent(
+        settings.eventCrateCount,
+        24,
+        random,
+        block -> {
+          String key = locationKey(block.getLocation());
+          block.setType(Material.CHEST, false);
+          fillEventChest(block);
+          eventChests.add(key);
+        });
+  }
+
+  private void placeEventContent(
+      int targetCount, int minimumAttempts, Random random, Consumer<Block> placer) {
+    for (int placed = 0, attempts = 0;
+        placed < targetCount && attempts < Math.max(minimumAttempts, targetCount * 16);
+        attempts++) {
+      Block block = randomAvailableEventContentBlock(random);
+      if (block == null) {
         continue;
       }
-      Block block = surface.getBlock();
-      Material material = settings.eventNodeMaterials.choose(random);
-      block.setType(material, false);
-      String key = locationKey(block.getLocation());
-      eventNodes.add(key);
-      nodeMaterialByKey.put(key, material);
+      placer.accept(block);
+      placed++;
+    }
+  }
+
+  private Block randomAvailableEventContentBlock(Random random) {
+    Location surface = randomCenterSurface(random);
+    if (surface == null) {
+      return null;
     }
 
-    for (int i = 0; i < settings.eventCrateCount; i++) {
-      Location surface = randomCenterSurface(random);
-      if (surface == null) {
-        continue;
-      }
-      Block block = surface.getBlock();
-      block.setType(Material.CHEST, false);
-      fillEventChest(block);
-      eventChests.add(locationKey(block.getLocation()));
-    }
+    Block block = surface.getBlock();
+    String key = locationKey(block.getLocation());
+    return isAvailableEventContentBlock(block, key) ? block : null;
+  }
+
+  private boolean isAvailableEventContentBlock(Block block, String key) {
+    return block.getType().isAir()
+        && !nodeMaterialByKey.containsKey(key)
+        && !eventNodes.contains(key)
+        && !eventChests.contains(key)
+        && !temporaryBlocks.contains(key)
+        && !centerStructureBlocks.contains(key);
   }
 
   private Location randomCenterSurface(Random random) {
@@ -2826,10 +2875,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private void cleanupTemporaryBlocks() {
     for (String key : new ArrayList<>(temporaryBlocks)) {
-      Block block = blockFromKey(key);
-      if (block != null) {
-        block.setType(Material.AIR, false);
-      }
+      clearBlock(blockFromKey(key));
     }
     temporaryBlocks.clear();
   }
@@ -2847,10 +2893,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
           continue;
         }
         for (int y = minY; y <= maxY; y++) {
-          Block block = world.getBlockAt(x, y, z);
-          if (!block.getType().isAir()) {
-            block.setType(Material.AIR, false);
-          }
+          clearBlock(world.getBlockAt(x, y, z));
         }
       }
     }
@@ -2879,12 +2922,15 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     for (int x = island.x - radius; x <= island.x + radius; x++) {
       for (int z = island.z - radius; z <= island.z + radius; z++) {
         for (int blockY = y - 8; blockY <= y + 48; blockY++) {
-          Block block = world.getBlockAt(x, blockY, z);
-          if (!block.getType().isAir()) {
-            block.setType(Material.AIR, false);
-          }
+          clearBlock(world.getBlockAt(x, blockY, z));
         }
       }
+    }
+  }
+
+  private void clearBlock(Block block) {
+    if (block != null && !block.getType().isAir()) {
+      block.setType(Material.AIR, false);
     }
   }
 
@@ -2962,7 +3008,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     Location location = player.getLocation();
-    if (location.getWorld() == null || !location.getWorld().getName().equals(getWorldName())) {
+    if (!isSkyblockOverworld(location)) {
       sendError(player, "You can only set your island spawnpoint in the Skyblock overworld.");
       return;
     }
@@ -3033,9 +3079,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private List<String> completeTeamCommand(CommandSender sender, String[] args) {
     if (args.length == 1) {
-      return filter(
-          Arrays.asList("create", "invite", "accept", "decline", "leave", "kick", "rename", "disband", "info"),
-          args[0]);
+      return filter(TEAM_SUBCOMMANDS, args[0]);
     }
     if (!(sender instanceof Player player) || args.length != 2) {
       return Collections.emptyList();
@@ -3087,7 +3131,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
-    Island island = getOrCreateEffectiveIsland(player);
+    getOrCreateEffectiveIsland(player);
 
     SkyblockTeam team =
         new SkyblockTeam(name, normalizedName, player.getUniqueId(), new ArrayList<>(Collections.singletonList(player.getUniqueId())));
@@ -3648,9 +3692,13 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private int countMaterial(PlayerInventory inventory, Material material) {
+    return countInventoryItems(inventory, item -> item != null && item.getType() == material);
+  }
+
+  private int countInventoryItems(PlayerInventory inventory, Predicate<ItemStack> matcher) {
     int count = 0;
     for (ItemStack item : inventory.getContents()) {
-      if (item != null && item.getType() == material) {
+      if (matcher.test(item)) {
         count += item.getAmount();
       }
     }
@@ -3658,11 +3706,15 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private void removeMaterial(PlayerInventory inventory, Material material, int amount) {
+    removeInventoryItems(inventory, amount, item -> item != null && item.getType() == material);
+  }
+
+  private void removeInventoryItems(PlayerInventory inventory, int amount, Predicate<ItemStack> matcher) {
     int remaining = amount;
     ItemStack[] contents = inventory.getContents();
     for (int slot = 0; slot < contents.length; slot++) {
       ItemStack item = contents[slot];
-      if (item == null || item.getType() != material) {
+      if (!matcher.test(item)) {
         continue;
       }
 
@@ -4223,8 +4275,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     keys.addAll(netherPlayerBlocks);
     for (String key : keys) {
       Block block = blockFromKey(key);
-      if (block != null && block.getWorld().equals(world) && !block.getType().isAir()) {
-        block.setType(Material.AIR, false);
+      if (block != null && block.getWorld().equals(world)) {
+        clearBlock(block);
       }
     }
   }
@@ -4501,11 +4553,10 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
+    Set<EntityType> typeSet = Set.of(types);
     Location center = new Location(world, island.x + 0.5, netherSurfaceY(island, island.x, island.z) + 3.0, island.z + 0.5);
     long existing =
-        world.getNearbyEntities(center, island.radiusX + 12, 18, island.radiusZ + 12).stream()
-            .filter(entity -> Arrays.asList(types).contains(entity.getType()))
-            .count();
+        countNearbyEntities(center, island.radiusX + 12, 18, island.radiusZ + 12, entity -> typeSet.contains(entity.getType()));
     for (int i = (int) existing; i < target; i++) {
       Location spawn = randomNetherMobSpawn(world, island);
       if (spawn == null) {
@@ -4566,6 +4617,10 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       }
     }
     return new Location(world, 0.5, 84.0, 2.5, player.getLocation().getYaw(), 0);
+  }
+
+  private Location netherReturnLocation(Player player) {
+    return islandSpawnLocation(getOrCreateEffectiveIsland(player));
   }
 
   private Location endEntryLocation(World end, Player player) {
@@ -4896,12 +4951,12 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private boolean isProtectedIslandCore(Block block) {
-    if (block.getType() != Material.LODESTONE && block.getType() != Material.BEDROCK) {
+    if ((block.getType() != Material.LODESTONE && block.getType() != Material.BEDROCK)
+        || !isSkyblockOverworld(block.getWorld())) {
       return false;
     }
     for (Island island : islands.values()) {
-      if (block.getWorld().getName().equals(getWorldName())
-          && Math.abs(block.getX() - island.x) <= 1
+      if (Math.abs(block.getX() - island.x) <= 1
           && Math.abs(block.getZ() - island.z) <= 1
           && Math.abs(block.getY() - getConfig().getInt("island-y", 88)) <= 2) {
         return true;
@@ -4911,7 +4966,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private boolean isInCenter(Location location) {
-    if (location == null || location.getWorld() == null || !location.getWorld().getName().equals(getWorldName())) {
+    if (!isSkyblockOverworld(location)) {
       return false;
     }
     int radius = getConfig().getInt("center-radius", 160);
@@ -4923,9 +4978,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private boolean isInManagedNether(Location location) {
-    return location != null
-        && location.getWorld() != null
-        && location.getWorld().getName().equals(getNetherWorldName());
+    return location != null && isManagedNetherWorld(location.getWorld());
   }
 
   private boolean isInNetherHotspot(Location location) {
@@ -5018,6 +5071,13 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
+    List<String> lines = scoreboardLines(player, inPvpZone);
+    UUID playerId = player.getUniqueId();
+    if (lines.equals(lastScoreboardLines.get(playerId))) {
+      return;
+    }
+    lastScoreboardLines.put(playerId, new ArrayList<>(lines));
+
     Scoreboard scoreboard = manager.getNewScoreboard();
     Objective objective =
         scoreboard.registerNewObjective(
@@ -5026,7 +5086,6 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
             Component.text("Mineperial", NamedTextColor.GOLD).decorate(TextDecoration.BOLD));
     objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-    List<String> lines = scoreboardLines(player, inPvpZone);
     int score = lines.size();
     for (String line : lines) {
       objective.getScore(line).setScore(score--);
@@ -5036,7 +5095,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private List<String> scoreboardLines(Player player, boolean inPvpZone) {
     Island island = effectiveIsland(player.getUniqueId());
-    return Arrays.asList(
+    return List.of(
         inPvpZone ? "\u00a7c" + pvpZoneName(player.getLocation()) : "\u00a7aSafe zone",
         "\u00a78 ",
         "\u00a77Island \u00a7f" + islandScoreboardText(island),
@@ -5055,7 +5114,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private String centerDistanceText(Location location) {
-    if (location == null || location.getWorld() == null || !location.getWorld().getName().equals(getWorldName())) {
+    if (!isSkyblockOverworld(location)) {
       return "other world";
     }
     double distance = Math.sqrt(location.getX() * location.getX() + location.getZ() * location.getZ());
@@ -5086,7 +5145,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private Island nearestIsland(Location location, int radius) {
-    if (location == null || location.getWorld() == null || !location.getWorld().getName().equals(getWorldName())) {
+    if (!isSkyblockOverworld(location)) {
       return null;
     }
     int radiusSquared = radius * radius;
@@ -5105,28 +5164,11 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   }
 
   private int countShards(PlayerInventory inventory) {
-    int count = 0;
-    for (ItemStack item : inventory.getContents()) {
-      if (isCenterShard(item)) {
-        count += item.getAmount();
-      }
-    }
-    return count;
+    return countInventoryItems(inventory, this::isCenterShard);
   }
 
   private void removeShards(PlayerInventory inventory, int amount) {
-    int remaining = amount;
-    for (ItemStack item : inventory.getContents()) {
-      if (!isCenterShard(item)) {
-        continue;
-      }
-      int take = Math.min(remaining, item.getAmount());
-      item.setAmount(item.getAmount() - take);
-      remaining -= take;
-      if (remaining <= 0) {
-        return;
-      }
-    }
+    removeInventoryItems(inventory, amount, this::isCenterShard);
   }
 
   private int centerGeneratorSignature() {
@@ -6051,7 +6093,23 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
 
   private String getConfiguredWorldName(String path, String fallback) {
     String worldName = getConfig().getString(path, fallback);
-    return worldName == null || worldName.isBlank() ? fallback : worldName;
+    return worldName == null || worldName.isBlank() ? fallback : worldName.trim();
+  }
+
+  private boolean isSkyblockOverworld(Location location) {
+    return location != null && isSkyblockOverworld(location.getWorld());
+  }
+
+  private boolean isSkyblockOverworld(World world) {
+    return isWorld(world, getWorldName());
+  }
+
+  private boolean isManagedNetherWorld(World world) {
+    return isWorld(world, getNetherWorldName());
+  }
+
+  private boolean isWorld(World world, String worldName) {
+    return world != null && world.getName().equals(worldName);
   }
 
   private Location islandSpawnLocation(Island island) {
