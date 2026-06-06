@@ -42,8 +42,8 @@ $Jar = if ($JavaBin -and (Test-Path (Join-Path $JavaBin "jar.exe"))) {
 
 $BuildDir = Join-Path $PluginRoot "build"
 $ClassesDir = Join-Path $BuildDir "classes"
-$JarPath = Join-Path $BuildDir "mineperial-skyblock-core-1.0.0.jar"
-$DeployPath = Join-Path $Root "skyblock\plugins\mineperial-skyblock-core-1.0.0.jar"
+$JarPath = Join-Path $BuildDir "isles-1.0.0.jar"
+$DeployPath = Join-Path $Root "skyblock\plugins\isles-1.0.0.jar"
 
 if (Test-Path $BuildDir) {
   Remove-Item -Recurse -Force $BuildDir
