@@ -126,6 +126,7 @@ The legacy `mineperial.skyblock.admin` permission is still accepted for compatib
 | `/isles worldreset confirm` | Queue a full Isles world and data reset for the next server startup. |
 | `/isles unlock nether` | Unlock Nether portal travel and ensure the managed Nether exists. |
 | `/isles unlock end` | Unlock the End, build the arena, and create the center End portal. |
+| `/isles migrate [all\|config\|data\|items]` | Migrate legacy MSB config, data, and item tags after the Isles rename. |
 | `/isles reload` | Reload config/data, refresh generators and managed worlds, and update player tab names. |
 
 Legacy `/msb` command forms still work as compatibility aliases.

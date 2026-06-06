@@ -2,6 +2,9 @@ package net.mineperial.skyblockcore;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -122,7 +125,8 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private static final Pattern TEAM_NAME_PATTERN = Pattern.compile("[A-Za-z0-9 -]{3,24}");
   private static final List<String> PUBLIC_ISLES_COMMANDS = List.of("island", "upgrades", "setspawn");
   private static final List<String> ADMIN_ISLES_COMMANDS =
-      List.of("event", "center", "nether", "biome", "worldreset", "unlock", "reload");
+      List.of("event", "center", "nether", "biome", "worldreset", "unlock", "migrate", "reload");
+  private static final List<String> MIGRATE_SUBCOMMANDS = List.of("all", "config", "data", "items");
   private static final List<String> TEAM_SUBCOMMANDS =
       List.of("create", "invite", "accept", "decline", "leave", "kick", "rename", "disband", "info");
   private static final List<String> ISLAND_ADMIN_SUBCOMMANDS = List.of("create", "list", "wipe");
@@ -760,6 +764,12 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
         }
         handleUnlockCommand(sender, args);
         return true;
+      case "migrate":
+        if (!requireAdmin(sender)) {
+          return true;
+        }
+        handleMigrateCommand(sender, args);
+        return true;
       case "reload":
         if (!requireAdmin(sender)) {
           return true;
@@ -820,6 +830,9 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       }
       if (args[0].equalsIgnoreCase("unlock") && hasAdminPermission(sender)) {
         return filter(UNLOCK_ADMIN_SUBCOMMANDS, args[1]);
+      }
+      if (args[0].equalsIgnoreCase("migrate") && hasAdminPermission(sender)) {
+        return filter(MIGRATE_SUBCOMMANDS, args[1]);
       }
     }
 
@@ -2770,24 +2783,29 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
             || meta.getPersistentDataContainer().has(legacyShardKey, PersistentDataType.INTEGER));
   }
 
-  private void migrateOnlineLegacyItemTags() {
+  private int migrateOnlineLegacyItemTags() {
+    int migrated = 0;
     for (Player player : Bukkit.getOnlinePlayers()) {
-      migrateLegacyItemTags(player.getInventory());
+      migrated += migrateLegacyItemTags(player.getInventory());
     }
+    return migrated;
   }
 
-  private void migrateLegacyItemTags(PlayerInventory inventory) {
+  private int migrateLegacyItemTags(PlayerInventory inventory) {
     if (inventory == null) {
-      return;
+      return 0;
     }
 
+    int migrated = 0;
     ItemStack[] contents = inventory.getContents();
     for (int slot = 0; slot < contents.length; slot++) {
       ItemStack item = contents[slot];
       if (migrateLegacyItemTag(item)) {
         inventory.setItem(slot, item);
+        migrated++;
       }
     }
+    return migrated;
   }
 
   private boolean migrateLegacyItemTag(ItemStack item) {
@@ -4151,6 +4169,60 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
   }
 
+  private void handleMigrateCommand(CommandSender sender, String[] args) {
+    if (args.length > 2) {
+      sendWarning(sender, "Usage: /isles migrate [all|config|data|items]");
+      return;
+    }
+
+    String scope = args.length == 2 ? args[1].toLowerCase(Locale.ROOT) : "all";
+    if (!MIGRATE_SUBCOMMANDS.contains(scope)) {
+      sendWarning(sender, "Usage: /isles migrate [all|config|data|items]");
+      return;
+    }
+
+    boolean migrateAll = scope.equals("all");
+    boolean migrateConfig = migrateAll || scope.equals("config");
+    boolean migrateData = migrateAll || scope.equals("data");
+    boolean migrateItems = migrateAll || scope.equals("items");
+
+    MigrationResult configResult = MigrationResult.skipped("not requested");
+    MigrationResult dataResult = MigrationResult.skipped("not requested");
+    int itemStacks = 0;
+
+    if (migrateConfig) {
+      configResult = migrateLegacyConfigSmartly();
+      reloadConfig();
+      configureManagedWorldGenerators();
+      refreshConfigCache();
+    }
+
+    if (migrateData) {
+      dataResult = migrateLegacyDataSmartly();
+      loadData();
+    }
+
+    if (migrateItems) {
+      itemStacks = migrateOnlineLegacyItemTags();
+    }
+
+    if (migrateConfig || migrateData) {
+      initializeWorlds();
+      updateAllPlayerTabNames();
+    }
+
+    sendSuccess(sender, "Migration pass finished.");
+    if (migrateConfig) {
+      sendInfo(sender, "Config: " + configResult.summary + ".");
+    }
+    if (migrateData) {
+      sendInfo(sender, "Data: " + dataResult.summary + ".");
+    }
+    if (migrateItems) {
+      sendInfo(sender, "Items: retagged " + itemStacks + " online inventory stack(s).");
+    }
+  }
+
   private void sendHelp(CommandSender sender) {
     sender.sendMessage("\u00a78---------- \u00a76\u00a7lIsles \u00a78----------");
     sender.sendMessage("\u00a7e/isles island \u00a78- \u00a77Show your island coordinates.");
@@ -4168,6 +4240,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       sender.sendMessage("\u00a7e/isles biome fix \u00a78- \u00a77Refresh managed world biomes.");
       sender.sendMessage("\u00a7e/isles worldreset confirm \u00a78- \u00a77Queue a full world/data reset.");
       sender.sendMessage("\u00a7e/isles unlock <nether|end> \u00a78- \u00a77Unlock dimensions.");
+      sender.sendMessage("\u00a7e/isles migrate [all|config|data|items] \u00a78- \u00a77Migrate legacy MSB state.");
       sender.sendMessage("\u00a7e/isles reload \u00a78- \u00a77Reload config/data.");
     }
   }
@@ -4207,6 +4280,383 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     }
 
     saveDefaultConfig();
+  }
+
+  private MigrationResult migrateLegacyConfigSmartly() {
+    File currentConfigFile = new File(getDataFolder(), "config.yml");
+    File legacyConfigFile = new File(legacyPluginDataFolder(), "config.yml");
+
+    YamlConfiguration defaults = loadBundledConfig();
+    YamlConfiguration currentConfig = YamlConfiguration.loadConfiguration(currentConfigFile);
+    YamlConfiguration legacyConfig =
+        legacyConfigFile.exists() ? YamlConfiguration.loadConfiguration(legacyConfigFile) : new YamlConfiguration();
+
+    YamlConfiguration merged = new YamlConfiguration();
+    Set<String> defaultPaths = leafPaths(defaults);
+    int currentOverrides = 0;
+    int legacyOverrides = 0;
+    int unknownKeys = 0;
+
+    for (String path : defaultPaths) {
+      Object defaultValue = defaults.get(path);
+      merged.set(path, defaultValue);
+
+      if (currentConfig.contains(path) && !sameConfigValue(currentConfig.get(path), defaultValue)) {
+        merged.set(path, currentConfig.get(path));
+        currentOverrides++;
+      } else if (legacyConfig.contains(path) && !sameConfigValue(legacyConfig.get(path), defaultValue)) {
+        merged.set(path, legacyConfig.get(path));
+        legacyOverrides++;
+      }
+    }
+
+    for (String path : leafPaths(legacyConfig)) {
+      if (!defaultPaths.contains(path) && !merged.contains(path)) {
+        merged.set(path, legacyConfig.get(path));
+        unknownKeys++;
+      }
+    }
+
+    for (String path : leafPaths(currentConfig)) {
+      if (!defaultPaths.contains(path)) {
+        merged.set(path, currentConfig.get(path));
+        unknownKeys++;
+      }
+    }
+
+    String before = currentConfigFile.exists() ? currentConfig.saveToString() : "";
+    String after = merged.saveToString();
+    if (before.equals(after)) {
+      return MigrationResult.unchanged(
+          "already current; preserved "
+              + currentOverrides
+              + " current override(s), "
+              + legacyOverrides
+              + " legacy override(s)");
+    }
+
+    try {
+      File parent = currentConfigFile.getParentFile();
+      if (parent != null && !parent.exists()) {
+        parent.mkdirs();
+      }
+      backupFile(currentConfigFile, "pre-migrate-config");
+      merged.save(currentConfigFile);
+      return MigrationResult.changed(
+          "updated config with "
+              + defaultPaths.size()
+              + " default key(s), "
+              + legacyOverrides
+              + " legacy override(s), "
+              + currentOverrides
+              + " current override(s), "
+              + unknownKeys
+              + " custom key(s)");
+    } catch (IOException e) {
+      return MigrationResult.unchanged("could not save smart config merge: " + e.getMessage());
+    }
+  }
+
+  private MigrationResult migrateLegacyDataSmartly() {
+    File currentDataFile = new File(getDataFolder(), "data.yml");
+    File legacyDataFile = new File(legacyPluginDataFolder(), "data.yml");
+    if (!legacyDataFile.exists()) {
+      return MigrationResult.unchanged("no legacy data.yml found");
+    }
+
+    YamlConfiguration legacyData = YamlConfiguration.loadConfiguration(legacyDataFile);
+    if (!hasRuntimeData(legacyData)) {
+      return MigrationResult.unchanged("legacy data.yml has no runtime state");
+    }
+
+    YamlConfiguration currentData = YamlConfiguration.loadConfiguration(currentDataFile);
+    if (!currentDataFile.exists() || !hasRuntimeData(currentData)) {
+      try {
+        File parent = currentDataFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+          parent.mkdirs();
+        }
+        backupFile(currentDataFile, "pre-migrate-data");
+        Files.copy(legacyDataFile.toPath(), currentDataFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        return MigrationResult.changed("copied legacy data.yml because Isles data was empty");
+      } catch (IOException e) {
+        return MigrationResult.unchanged("could not copy legacy data.yml: " + e.getMessage());
+      }
+    }
+
+    String before = currentData.saveToString();
+    int changed = 0;
+    changed += setMaxInt(currentData, "next-island-slot", legacyData.getInt("next-island-slot", 0));
+    changed += setTrueIfLegacyTrue(currentData, legacyData, "unlocks.nether");
+    changed += setTrueIfLegacyTrue(currentData, legacyData, "unlocks.end");
+    changed += mergeLegacyEventState(currentData, legacyData);
+    changed += mergeLegacyIslands(currentData, legacyData);
+    changed += mergeLegacyTeams(currentData, legacyData);
+    changed += mergeMissingSectionEntries(currentData, legacyData, "mined-nodes");
+    changed += mergeMissingSectionEntries(currentData, legacyData, "nether.mined-nodes");
+    changed += mergeStringList(currentData, legacyData, "temporary-blocks");
+    changed += mergeStringList(currentData, legacyData, "nether.player-blocks");
+    changed += mergeStringList(currentData, legacyData, "event.nodes");
+    changed += mergeStringList(currentData, legacyData, "event.chests");
+
+    String after = currentData.saveToString();
+    if (changed == 0 || before.equals(after)) {
+      return MigrationResult.unchanged("already merged");
+    }
+
+    try {
+      backupFile(currentDataFile, "pre-migrate-data");
+      currentData.save(currentDataFile);
+      return MigrationResult.changed("merged " + changed + " legacy data area(s)");
+    } catch (IOException e) {
+      return MigrationResult.unchanged("could not save data merge: " + e.getMessage());
+    }
+  }
+
+  private YamlConfiguration loadBundledConfig() {
+    try (InputStream input = getResource("config.yml")) {
+      if (input == null) {
+        return new YamlConfiguration();
+      }
+      try (InputStreamReader reader = new InputStreamReader(input, StandardCharsets.UTF_8)) {
+        return YamlConfiguration.loadConfiguration(reader);
+      }
+    } catch (IOException e) {
+      getLogger().warning("Could not load bundled config defaults: " + e.getMessage());
+      return new YamlConfiguration();
+    }
+  }
+
+  private int mergeLegacyEventState(YamlConfiguration currentData, YamlConfiguration legacyData) {
+    int changed = setTrueIfLegacyTrue(currentData, legacyData, "event.active");
+    if (!currentData.getBoolean("event.active", false) && legacyData.getBoolean("event.active", false)) {
+      changed += setConfigValueIfDifferent(currentData, "event.ends-at", legacyData.getLong("event.ends-at", 0L));
+    } else {
+      changed += setMaxLong(currentData, "event.ends-at", legacyData.getLong("event.ends-at", 0L));
+    }
+    return changed;
+  }
+
+  private int mergeLegacyIslands(YamlConfiguration currentData, YamlConfiguration legacyData) {
+    ConfigurationSection legacyIslands = legacyData.getConfigurationSection("islands");
+    if (legacyIslands == null) {
+      return 0;
+    }
+
+    int changed = 0;
+    for (String ownerId : legacyIslands.getKeys(false)) {
+      ConfigurationSection legacyIsland = legacyIslands.getConfigurationSection(ownerId);
+      if (legacyIsland == null) {
+        continue;
+      }
+
+      ConfigurationSection currentIsland = currentData.getConfigurationSection("islands." + ownerId);
+      if (currentIsland == null) {
+        copySection(legacyIsland, currentData, "islands." + ownerId);
+        changed++;
+        continue;
+      }
+
+      String basePath = "islands." + ownerId;
+      changed += setConfigValueIfDifferent(currentData, basePath + ".name", legacyIsland.get("name"));
+      changed += setConfigValueIfDifferent(currentData, basePath + ".slot", legacyIsland.get("slot"));
+      changed += setConfigValueIfDifferent(currentData, basePath + ".x", legacyIsland.get("x"));
+      changed += setConfigValueIfDifferent(currentData, basePath + ".z", legacyIsland.get("z"));
+      ConfigurationSection legacySpawn = legacyIsland.getConfigurationSection("spawn");
+      if (legacySpawn != null) {
+        copySection(legacySpawn, currentData, basePath + ".spawn");
+        changed++;
+      }
+
+      Set<String> mergedUpgrades = new LinkedHashSet<>(knownUpgrades(currentIsland.getStringList("upgrades")));
+      int beforeSize = mergedUpgrades.size();
+      mergedUpgrades.addAll(knownUpgrades(legacyIsland.getStringList("upgrades")));
+      if (mergedUpgrades.size() > beforeSize) {
+        currentData.set(basePath + ".upgrades", new ArrayList<>(mergedUpgrades));
+        changed++;
+      }
+    }
+    return changed;
+  }
+
+  private int mergeLegacyTeams(YamlConfiguration currentData, YamlConfiguration legacyData) {
+    ConfigurationSection legacyTeams = legacyData.getConfigurationSection("teams");
+    if (legacyTeams == null || legacyTeams.getKeys(false).isEmpty()) {
+      return 0;
+    }
+
+    ConfigurationSection currentTeams = currentData.getConfigurationSection("teams");
+    if (currentTeams == null || currentTeams.getKeys(false).isEmpty()) {
+      currentData.set("teams", null);
+      copySection(legacyTeams, currentData, "teams");
+      return legacyTeams.getKeys(false).size();
+    }
+
+    Set<String> currentTeamKeys = currentTeams.getKeys(false);
+    Set<String> assignedMembers = assignedTeamMembers(currentTeams);
+    int changed = 0;
+    for (String teamKey : legacyTeams.getKeys(false)) {
+      if (currentTeamKeys.contains(teamKey)) {
+        continue;
+      }
+
+      ConfigurationSection legacyTeam = legacyTeams.getConfigurationSection(teamKey);
+      if (legacyTeam == null || hasAssignedMemberConflict(legacyTeam, assignedMembers)) {
+        continue;
+      }
+
+      copySection(legacyTeam, currentData, "teams." + teamKey);
+      assignedMembers.addAll(teamMemberIds(legacyTeam));
+      changed++;
+    }
+    return changed;
+  }
+
+  private Set<String> assignedTeamMembers(ConfigurationSection teamsSection) {
+    Set<String> members = new HashSet<>();
+    for (String teamKey : teamsSection.getKeys(false)) {
+      ConfigurationSection team = teamsSection.getConfigurationSection(teamKey);
+      if (team != null) {
+        members.addAll(teamMemberIds(team));
+      }
+    }
+    return members;
+  }
+
+  private boolean hasAssignedMemberConflict(ConfigurationSection team, Set<String> assignedMembers) {
+    for (String memberId : teamMemberIds(team)) {
+      if (assignedMembers.contains(memberId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Set<String> teamMemberIds(ConfigurationSection team) {
+    Set<String> members = new HashSet<>();
+    String leader = team.getString("leader", "");
+    if (!leader.isBlank()) {
+      members.add(leader);
+    }
+    members.addAll(team.getStringList("members"));
+    return members;
+  }
+
+  private int mergeMissingSectionEntries(
+      YamlConfiguration currentData, YamlConfiguration legacyData, String sectionPath) {
+    ConfigurationSection legacySection = legacyData.getConfigurationSection(sectionPath);
+    if (legacySection == null) {
+      return 0;
+    }
+
+    int changed = 0;
+    for (String key : legacySection.getKeys(false)) {
+      String targetPath = sectionPath + "." + key;
+      if (currentData.contains(targetPath)) {
+        continue;
+      }
+      ConfigurationSection child = legacySection.getConfigurationSection(key);
+      if (child != null) {
+        copySection(child, currentData, targetPath);
+      } else {
+        currentData.set(targetPath, legacySection.get(key));
+      }
+      changed++;
+    }
+    return changed;
+  }
+
+  private int mergeStringList(YamlConfiguration currentData, YamlConfiguration legacyData, String path) {
+    Set<String> merged = new LinkedHashSet<>(currentData.getStringList(path));
+    int beforeSize = merged.size();
+    merged.addAll(legacyData.getStringList(path));
+    if (merged.size() == beforeSize) {
+      return 0;
+    }
+    currentData.set(path, new ArrayList<>(merged));
+    return 1;
+  }
+
+  private int setTrueIfLegacyTrue(YamlConfiguration currentData, YamlConfiguration legacyData, String path) {
+    if (!currentData.getBoolean(path, false) && legacyData.getBoolean(path, false)) {
+      currentData.set(path, true);
+      return 1;
+    }
+    return 0;
+  }
+
+  private int setMaxInt(YamlConfiguration config, String path, int candidate) {
+    int current = config.getInt(path, 0);
+    if (candidate > current) {
+      config.set(path, candidate);
+      return 1;
+    }
+    return 0;
+  }
+
+  private int setMaxLong(YamlConfiguration config, String path, long candidate) {
+    long current = config.getLong(path, 0L);
+    if (candidate > current) {
+      config.set(path, candidate);
+      return 1;
+    }
+    return 0;
+  }
+
+  private int setConfigValueIfDifferent(YamlConfiguration config, String path, Object value) {
+    if (value == null || sameConfigValue(config.get(path), value)) {
+      return 0;
+    }
+    config.set(path, value);
+    return 1;
+  }
+
+  private void copySection(ConfigurationSection source, YamlConfiguration target, String targetPath) {
+    for (String path : leafPaths(source)) {
+      target.set(targetPath + "." + path, source.get(path));
+    }
+  }
+
+  private Set<String> leafPaths(ConfigurationSection section) {
+    Set<String> paths = new LinkedHashSet<>();
+    collectLeafPaths(section, "", paths);
+    return paths;
+  }
+
+  private void collectLeafPaths(ConfigurationSection section, String prefix, Set<String> paths) {
+    if (section == null) {
+      return;
+    }
+
+    for (String key : section.getKeys(false)) {
+      String path = prefix.isEmpty() ? key : prefix + "." + key;
+      ConfigurationSection child = section.getConfigurationSection(key);
+      if (child != null) {
+        collectLeafPaths(child, path, paths);
+      } else {
+        paths.add(path);
+      }
+    }
+  }
+
+  private boolean sameConfigValue(Object first, Object second) {
+    if (first == null && second == null) {
+      return true;
+    }
+    if (first == null || second == null) {
+      return false;
+    }
+    return String.valueOf(first).equals(String.valueOf(second));
+  }
+
+  private void backupFile(File file, String label) throws IOException {
+    if (file == null || !file.exists()) {
+      return;
+    }
+
+    String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now());
+    Path backupPath = file.toPath().resolveSibling(file.getName() + "." + label + "-" + timestamp + ".bak");
+    Files.copy(file.toPath(), backupPath, StandardCopyOption.REPLACE_EXISTING);
   }
 
   private void configureManagedWorldGenerators() {
@@ -6374,6 +6824,28 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
   private List<String> filter(List<String> values, String prefix) {
     String lower = prefix.toLowerCase(Locale.ROOT);
     return values.stream().filter(value -> value.toLowerCase(Locale.ROOT).startsWith(lower)).toList();
+  }
+
+  private static final class MigrationResult {
+    final boolean changed;
+    final String summary;
+
+    MigrationResult(boolean changed, String summary) {
+      this.changed = changed;
+      this.summary = summary;
+    }
+
+    static MigrationResult changed(String summary) {
+      return new MigrationResult(true, summary);
+    }
+
+    static MigrationResult unchanged(String summary) {
+      return new MigrationResult(false, summary);
+    }
+
+    static MigrationResult skipped(String summary) {
+      return new MigrationResult(false, summary);
+    }
   }
 
   private static final class CenterGeneratorSettings {

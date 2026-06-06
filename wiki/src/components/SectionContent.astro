@@ -99,7 +99,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				<div class="section-copy">
 					<p>
 						These commands require <code>isles.admin</code>, which defaults to operators.
-						They control world setup, Center events, dimension unlocks, and reset workflows.
+						They control world setup, Center events, dimension unlocks, migration, and reset workflows.
 					</p>
 				</div>
 				<div class="table-wrap">
@@ -124,6 +124,7 @@ const related = guidePages.filter((item) => item.slug !== slug).slice(0, 3);
 				</div>
 				<div class="note-row">
 					<p>New installs auto-register the Center generator for the overworld and void generators for the Nether and End.</p>
+					<p>After updating from legacy MSB, use <code>/isles migrate</code> to smart-merge old config/data and retag online Center Shards.</p>
 					<p>Existing terrain may still need <code>/isles worldreset confirm</code> or a manual world reset to become true void terrain.</p>
 					<p>World reset requests are queued with a flag file and are processed on the next server startup before Paper loads the worlds.</p>
 				</div>

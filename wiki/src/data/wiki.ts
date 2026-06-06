@@ -27,8 +27,8 @@ export const guidePages = [
 		category: "Reference",
 		icon: "/assets/minecraft/diamond-chestplate.png",
 		text: "Admin-only maintenance, unlock, reset, and diagnostics commands.",
-		description: "Staff command reference for resets, unlocks, world generation, center events, and config reloads.",
-		search: "staff admin op permission isles.admin event center nether biome worldreset unlock reload",
+		description: "Staff command reference for resets, unlocks, migrations, world generation, center events, and config reloads.",
+		search: "staff admin op permission isles.admin event center nether biome worldreset unlock migrate migration config data items reload",
 	},
 	{
 		slug: "teams",
@@ -125,6 +125,7 @@ export const adminCommands = [
 	["/isles worldreset confirm", "Queue a full Isles world and data reset for the next server startup."],
 	["/isles unlock nether", "Unlock Nether portal travel and ensure the managed Nether archipelago exists."],
 	["/isles unlock end", "Unlock the End, build the shared arena, and create the Center End portal."],
+	["/isles migrate [all|config|data|items]", "Migrate legacy MSB config, data, and Center Shard item tags after the Isles rename."],
 	["/isles reload", "Reload config and data, refresh generators and managed worlds, and update player tab names."],
 ];
 
