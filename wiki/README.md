@@ -1,62 +1,92 @@
-# Server Wiki
+# Isles Player Wiki
+
+This folder contains the Astro-based player wiki for Isles Core. It documents player commands, staff tools, upgrades, teams, the center asteroid field, Nether progression, End progression, and safety rules.
+
+The wiki is fully prerendered and deployed with Cloudflare Workers Static Assets.
+
+## Requirements
+
+- Bun `1.3.14` or compatible.
+- Node `>=22.12.0`.
+- A Cloudflare account with a Workers project named `isles` for deployment.
+
+## Development
+
+Install dependencies:
 
 ```sh
-bun create astro@latest wiki --template minimal --install --no-git --yes
+bun install
 ```
 
-Basic Astro wiki scaffolded with Bun and configured for Cloudflare Workers Static Assets.
+Start the local dev server:
 
-## Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-|-- public/
-|-- src/
-|   `-- pages/
-|       `-- index.astro
-`-- package.json
+```sh
+bun run dev
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Build the static site:
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```sh
+bun run build
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+Preview the built site locally:
 
-## Commands
+```sh
+bun run preview
+```
 
-All commands are run from the root of the project, from a terminal:
+## Cloudflare Deployment
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `bun install`             | Installs dependencies                            |
-| `bun run dev`             | Starts local dev server at `localhost:4321`      |
-| `bun run build`           | Builds the production site to `./dist/`          |
-| `bun run preview`         | Previews the built static site locally           |
-| `bun run cf-preview`      | Builds and previews the Worker asset deployment locally |
-| `bun run cf-check`        | Builds and validates the Worker asset deployment |
-| `bun run cf-deploy`       | Deploys the already-built site in Cloudflare Workers Builds |
-| `bun run cf-preview-deploy` | Uploads a preview version for non-production branch builds |
-| `bun run deploy`          | Builds and deploys to Cloudflare Workers         |
-| `bun astro ...`           | Runs Astro CLI commands                          |
+`wrangler.jsonc` points Cloudflare at the generated `./dist/` directory. There is no Worker script or server-side rendering adapter.
 
-## Cloudflare Workers
+Useful commands:
 
-The wiki is fully prerendered and deployed with Workers Static Assets. `wrangler.jsonc`
-points Cloudflare at the generated `./dist/` directory, with no Worker script or SSR
-adapter needed.
+| Command | Action |
+| --- | --- |
+| `bun run cf-preview` | Build and preview the Worker asset deployment locally. |
+| `bun run cf-check` | Build and validate the Worker deployment with `wrangler deploy --dry-run`. |
+| `bun run cf-deploy` | Deploy the already-built site. |
+| `bun run cf-preview-deploy` | Upload a preview version for non-production branch builds. |
+| `bun run deploy` | Build and deploy to Cloudflare Workers. |
 
-## GitHub Auto Deploys
-
-In Cloudflare Workers Builds, connect the existing `isles` Worker project to this repository and use:
+For Cloudflare Workers Builds, connect the existing `isles` Worker project to this repository and use:
 
 | Setting | Value |
-| :------ | :---- |
+| --- | --- |
 | Root directory | `wiki` |
 | Build command | `bun run build` |
 | Deploy command | `bun run cf-deploy` |
 | Non-production branch deploy command | `bun run cf-preview-deploy` |
 
-The Worker name in Cloudflare must match `isles`, the `name` in `wrangler.jsonc`.
+## Content
+
+Most wiki content and reference data lives in:
+
+```text
+src/data/wiki.ts
+```
+
+Static images and icons live under:
+
+```text
+public/assets/
+```
+
+## Project Structure
+
+```text
+.
+|-- public/
+|   `-- assets/
+|-- src/
+|   |-- components/
+|   |-- data/
+|   |   `-- wiki.ts
+|   |-- layouts/
+|   `-- pages/
+|-- astro.config.mjs
+|-- package.json
+|-- tsconfig.json
+`-- wrangler.jsonc
+```
