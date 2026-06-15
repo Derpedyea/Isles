@@ -46,7 +46,7 @@ plugins/isles/
 
 AI tools were used heavily during development, including for Java/Paper plugin code, debugging, refactoring, and documentation. I reviewed the generated code, tested the plugin myself, and playtested it with a group of friends on our personal SMP before shipping.
 
-All public project media, including screenshots and videos, is real gameplay capture from the plugin running in Minecraft. No AI-generated media is used for the shipped project.
+The Isles icon shown in this README and on project pages is AI-generated. Gameplay screenshots and videos are real capture from the plugin running in Minecraft.
 
 ## Testing And Playtesting
 
