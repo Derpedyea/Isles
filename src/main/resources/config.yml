@@ -97,7 +97,7 @@ center-generator:
       accent-blocks: {CALCITE: 16, DEEPSLATE_BRICKS: 10, GRAVEL: 8}
       decorations: {STONE_BUTTON: 10, COBBLESTONE_WALL: 8, TORCH: 4}
       hazard-blocks: {MAGMA_BLOCK: 1}
-      nodes: {COAL_ORE: 28, COPPER_ORE: 22, IRON_ORE: 36, REDSTONE_ORE: 5, LAPIS_ORE: 4}
+      nodes: {GRAVEL: 18, COAL_ORE: 28, COPPER_ORE: 22, IRON_ORE: 36, REDSTONE_ORE: 5, LAPIS_ORE: 4}
       crate-loot: {COAL: 12, RAW_COPPER: 8, IRON_INGOT: 5, BREAD: 3}
       spawner-types: [ZOMBIE, SPIDER]
     metallic:

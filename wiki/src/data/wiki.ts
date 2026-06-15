@@ -56,9 +56,9 @@ export const guidePages = [
 		shortTitle: "Center",
 		category: "Article",
 		icon: "/assets/minecraft/amethyst-shard.png",
-		text: "PvP asteroids, resource veins, crates, and timed events.",
+		text: "PvP asteroids, resource nodes, crates, and timed events.",
 		description: "How the center asteroid field works, including PvP, events, drops, and shards.",
-		search: "center asteroids pvp shards event crates ore veins resources respawn",
+		search: "center asteroids pvp shards event crates resource nodes gravel resources respawn",
 	},
 	{
 		slug: "nether",
@@ -154,6 +154,7 @@ export const upgrades = [
 ];
 
 export const centerDrops = [
+	["Gravel", "4-8 Gravel, 20% chance for 1 Flint + 1 Center Shard"],
 	["Coal Ore", "2 Coal + 1 Center Shard"],
 	["Copper Ore", "4 Raw Copper + 1 Center Shard"],
 	["Iron Ore", "2 Raw Iron + 1 Center Shard"],
@@ -189,7 +190,7 @@ export const safetyRules = [
 	"The sidebar and action bar show whether you are in a PvP zone, your shard count, generator progress, center distance, and event state.",
 	"Chat warns you when you enter or leave a PvP zone.",
 	"Island cores use lodestone and bedrock protection and cannot be broken.",
-	"In the center, only resource veins and temporary placed blocks can be mined.",
+	"In the center, only resource nodes, gravel, and temporary placed blocks can be mined.",
 	"In the managed Nether, only player bridges and Nether resource nodes can be mined.",
 	"Armor, weapons, tools, shields, elytra, shears, rods, flint and steel, and maces are kept on death.",
 	"If you die in the void, normal drops are moved to your last safe spot or your island spawn.",

@@ -436,7 +436,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     if (nodeMaterial != null) {
       if (isDepletedNode(key)) {
         event.setCancelled(true);
-        sendWarning(event.getPlayer(), "That resource vein is regenerating.");
+        sendWarning(event.getPlayer(), "That resource node is regenerating.");
         return;
       }
       if (block.getType() != nodeMaterial) {
@@ -458,8 +458,14 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       return;
     }
 
+    if (block.getType() == Material.GRAVEL) {
+      nodeMaterialByKey.put(key, Material.GRAVEL);
+      mineCenterNode(event, key, Material.GRAVEL);
+      return;
+    }
+
     event.setCancelled(true);
-    sendError(event.getPlayer(), "Only resource veins and temporary blocks can be mined here.");
+    sendError(event.getPlayer(), "Only resource nodes, gravel, and temporary blocks can be mined here.");
   }
 
   @EventHandler
@@ -483,7 +489,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     String key = locationKey(event.getBlockPlaced().getLocation());
     if (nodeMaterialByKey.containsKey(key)) {
       event.setCancelled(true);
-      sendWarning(event.getPlayer(), "That resource vein is regenerating.");
+      sendWarning(event.getPlayer(), "That resource node is regenerating.");
       return;
     }
 
@@ -2539,7 +2545,10 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
     dropItemsNaturally(block, nodeDrops(nodeMaterial));
 
     long respawnAt = System.currentTimeMillis() + getConfig().getLong("node-respawn-seconds", 900L) * 1000L;
-    Material respawnMaterial = eventNodes.contains(key) ? nodeMaterial : randomRespawnNodeMaterial(block, nodeMaterial);
+    Material respawnMaterial =
+        eventNodes.contains(key) || nodeMaterial == Material.GRAVEL
+            ? nodeMaterial
+            : randomRespawnNodeMaterial(block, nodeMaterial);
     minedNodes.put(key, new MinedNode(respawnMaterial, respawnAt));
     saveData();
     scheduleNodeRespawn(key, respawnAt - System.currentTimeMillis());
@@ -2642,6 +2651,12 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
       case REDSTONE_ORE, DEEPSLATE_REDSTONE_ORE -> drops.add(new ItemStack(Material.REDSTONE, 5));
       case LAPIS_ORE, DEEPSLATE_LAPIS_ORE -> drops.add(new ItemStack(Material.LAPIS_LAZULI, 4));
       case EMERALD_ORE, DEEPSLATE_EMERALD_ORE -> drops.add(new ItemStack(Material.EMERALD, 1));
+      case GRAVEL -> {
+        drops.add(new ItemStack(Material.GRAVEL, ThreadLocalRandom.current().nextInt(4, 9)));
+        if (ThreadLocalRandom.current().nextDouble() < 0.20) {
+          drops.add(new ItemStack(Material.FLINT, 1));
+        }
+      }
       case ANCIENT_DEBRIS -> {
         drops.add(new ItemStack(Material.NETHERITE_SCRAP, 1));
         drops.add(centerShard(3));
@@ -6039,7 +6054,7 @@ public final class MineperialSkyblockCorePlugin extends JavaPlugin
             weightedMaterials(materialWeightMap(Material.CALCITE, 16, Material.DEEPSLATE_BRICKS, 10, Material.GRAVEL, 8), Material.CALCITE),
             weightedMaterials(materialWeightMap(Material.STONE_BUTTON, 10, Material.COBBLESTONE_WALL, 8, Material.TORCH, 4), Material.COBBLESTONE_WALL),
             weightedMaterials(materialWeightMap(Material.MAGMA_BLOCK, 1), Material.MAGMA_BLOCK),
-            weightedMaterials(materialWeightMap(Material.COAL_ORE, 28, Material.COPPER_ORE, 22, Material.IRON_ORE, 36, Material.REDSTONE_ORE, 5, Material.LAPIS_ORE, 4), Material.COAL_ORE),
+            weightedMaterials(materialWeightMap(Material.GRAVEL, 18, Material.COAL_ORE, 28, Material.COPPER_ORE, 22, Material.IRON_ORE, 36, Material.REDSTONE_ORE, 5, Material.LAPIS_ORE, 4), Material.COAL_ORE),
             materialAmountMap(Material.COAL, 12, Material.RAW_COPPER, 8, Material.IRON_INGOT, 5, Material.BREAD, 3),
             List.of(EntityType.ZOMBIE, EntityType.SPIDER)));
     archetypes.add(
