@@ -255,7 +255,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow reads the plugin version from `src/main/resources/plugin.yml`, compiles the plugin against Paper API `26.1.2.build.69-stable` by default, uploads the jar as an Actions artifact, and attaches `isles-<version>.jar` to the GitHub Release.
+The workflow reads the plugin version from `src/main/resources/plugin.yml`, compiles the plugin with Java 25 against Paper API `26.1.2.build.69-stable` by default, uploads the jar as an Actions artifact, and attaches `isles-<version>.jar` to the GitHub Release.
 
 Maintainers can also run **Build GitHub Release** manually from the GitHub Actions tab. Leave the release tag blank to use `v<plugin.yml version>`, or provide a custom tag. If the release already exists, the workflow replaces the jar asset.
 

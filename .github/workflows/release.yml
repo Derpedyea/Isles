@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Read plugin metadata
         id: meta
@@ -128,7 +128,7 @@ jobs:
 
           classpath="$(find build/github-actions/deps -name "*.jar" -print | paste -sd ':' -)"
 
-          javac -encoding UTF-8 -cp "${classpath}" -d build/classes @build/github-actions/sources.txt
+          javac --release 25 -proc:none -encoding UTF-8 -cp "${classpath}" -d build/classes @build/github-actions/sources.txt
           cp -R src/main/resources/. build/classes/
 
           jar --create --file "build/${{ steps.meta.outputs.jar_name }}" -C build/classes .
