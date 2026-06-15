@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "[0-9]*"
   workflow_dispatch:
     inputs:
       release_tag:
@@ -46,14 +47,14 @@ jobs:
           distribution: temurin
           java-version: "25"
 
-      - name: Read plugin metadata
+      - name: Read release metadata
         id: meta
         shell: bash
         run: |
           set -euo pipefail
 
-          plugin_version="$(sed -nE "s/^version:[[:space:]]*['\"]?([^'\"]+)['\"]?[[:space:]]*$/\1/p" src/main/resources/plugin.yml | head -n 1)"
-          if [[ -z "${plugin_version}" ]]; then
+          source_plugin_version="$(sed -nE "s/^version:[[:space:]]*['\"]?([^'\"]+)['\"]?[[:space:]]*$/\1/p" src/main/resources/plugin.yml | head -n 1)"
+          if [[ -z "${source_plugin_version}" ]]; then
             echo "Could not read version from src/main/resources/plugin.yml" >&2
             exit 1
           fi
@@ -63,13 +64,22 @@ jobs:
           else
             release_tag="${DISPATCH_RELEASE_TAG}"
             if [[ -z "${release_tag}" ]]; then
-              release_tag="v${plugin_version}"
+              release_tag="v${source_plugin_version}"
             fi
           fi
 
-          jar_name="isles-${plugin_version}.jar"
+          release_version="${release_tag}"
+          release_version="${release_version#v}"
+          release_version="${release_version#V}"
+          if [[ -z "${release_version}" ]]; then
+            echo "Could not derive release version from tag '${release_tag}'" >&2
+            exit 1
+          fi
 
-          echo "plugin_version=${plugin_version}" >> "${GITHUB_OUTPUT}"
+          jar_name="isles-${release_version}.jar"
+
+          echo "source_plugin_version=${source_plugin_version}" >> "${GITHUB_OUTPUT}"
+          echo "release_version=${release_version}" >> "${GITHUB_OUTPUT}"
           echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
           echo "jar_name=${jar_name}" >> "${GITHUB_OUTPUT}"
 
@@ -130,6 +140,8 @@ jobs:
 
           javac --release 25 -proc:none -encoding UTF-8 -cp "${classpath}" -d build/classes @build/github-actions/sources.txt
           cp -R src/main/resources/. build/classes/
+          sed -i -E "s/^version:[[:space:]]*.*/version: ${{ steps.meta.outputs.release_version }}/" build/classes/plugin.yml
+          grep "^version:" build/classes/plugin.yml
 
           jar --create --file "build/${{ steps.meta.outputs.jar_name }}" -C build/classes .
           ls -lh "build/${{ steps.meta.outputs.jar_name }}"
@@ -145,18 +157,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
-          PLUGIN_VERSION: ${{ steps.meta.outputs.plugin_version }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           JAR_PATH: build/${{ steps.meta.outputs.jar_name }}
         shell: bash
         run: |
           set -euo pipefail
 
           if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" --title "Isles ${RELEASE_VERSION}"
+            while read -r asset; do
+              gh release delete-asset "${RELEASE_TAG}" "${asset}" -y
+            done < <(gh release view "${RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -E '^isles-.*\.jar$' || true)
             gh release upload "${RELEASE_TAG}" "${JAR_PATH}" --clobber
           else
             args=(
               release create "${RELEASE_TAG}" "${JAR_PATH}"
-              --title "Isles ${PLUGIN_VERSION}"
+              --title "Isles ${RELEASE_VERSION}"
               --target "${GITHUB_SHA}"
               --generate-notes
             )
